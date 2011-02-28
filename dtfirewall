@@ -1,4 +1,4 @@
-!/bin/sh
+#!/bin/sh
 #
 # IPTables Firewall Script
 #  script to aid the use of IPTables - http://www.netfilter.org/projects/iptables/index.html
