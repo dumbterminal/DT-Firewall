@@ -4,12 +4,16 @@
 #  script to aid the use of IPTables - http://www.netfilter.org/projects/iptables/index.html
 #   more aid from: http://pikt.org/pikt/samples/iptables_tcp_flags_programs.cfg.html
 #                  http://pettingers.org/code/firewall.html
+<<<<<<< HEAD
+=======
+#                  http://www.newartisans.com/2007/09/neat-tricks-with-iptables.html
+>>>>>>> e6e2b57d44b55b6fe31c1a72d5981dd8a06e5e7f
 # This script does not make extra tables for the eye candy of the user.
 #  In theory it will run faster because the lack of table processing.
 #
 # http://dt.tehspork.com
 # Dumb Terminal
-#  Mistakingly making code happen on a daily basis.
+#  Smaller than Life Projects
 # Main Page: http://dt.tehspork.com
 # Git Repo: https://github.com/dumbterminal/
 # By: MikereDD & veekahn
@@ -19,6 +23,7 @@
 #  for helping with specific IP lines. :)
 #
 ## Last Update
+<<<<<<< HEAD
 ## Sat Feb 26 01:41:13 PST 2011
 #  2011-02-26
 #
@@ -66,11 +71,83 @@ VER="1.5"
   IFACES=( )  #not used yet
 
   GEN_SRV=( )
+=======
+## Tue Mar 01 23:57:13 PST 2011
+#  2011-03-01
+#
+## 'TODO' (among the objects listed in the "iptables output order"
+#  -Insert Custom Rule by Level 
+#  - LEVELS, start with LEVEL 0 or LEVEL 1
+#  - LEVELS function parameters:
+#  -      level_rule+=(  "level #"  "PD | PSD | PISD | PID" "<parameters for type>"
+#  -  or  PISD by default level_rule+=(  "level #" "<pisd parameters>"
+#  kernel firewall WARNING logging (log level 4 -default)
+#  SCRIPT=  (change it to dt.firewall ?)
+#  SPOOF_IPS (on WAN only), WAN vs LAN auto detection per iface - reseach -s and -d spoofed ips 
+VER="1.6b" 
+
+
+# iptables output order/levels
+# INPUT: 
+#   1 whitelist 
+#   2 sshguard 
+#   3 blacklist 
+#   4 block spoofing (for WAN use only!) [TODO: auto-detection] 
+#   5 allow localhost 
+#   6 connection tracking: ESTABLISHED,RELATED 
+#   7 allow lo iface 
+#   8 drop corrupt packets 
+#   9 bad packets/scans 
+#  10 special port 111, 113, 520 cases 
+#  11 icmp ping allow/deny/limit 
+#  12 other flood protections - FORWARDing limits 
+#  13 block brute force 
+#  14 allows: 
+#      - General Services (specific destination port) 
+#      - Specific Port Services (source and destination) 
+#      - Specific Source IP:Port, Dest Port 
+#      - Specific Source IP, Dest Port 
+#  15 reject/drop logging (last rule) 
+# FORWARD: 
+#  16 connection tracking: ESTABLISHED,RELATED 
+#  17 force ACCEPT rules [TODO] 
+#  18 drop corrupt packets 
+#  19 bad packets/scans 
+#  20 good-packet ACCEPT rules [TODO] - destinations! 
+#  21 if not ppp0 then allow: NEW,ESTABLISHED,RELATED 
+# OUTPUT: 
+#  22 connection tracking: ESTABLISHED,RELATED [disabled on force corrupt packet check] 
+#  23 ACCEPT rules [TODO] - whitelist/always allow 
+#  24 drop corrupt packets 
+#  25 DROP/REJECT rules [TODO] - blacklist/always blockblock 
+#  26 allow lo iface 
+#  27 connection tracking: NEW,ESTABLISHED,RELATED 
+#  28 reject/drop logging (last rule) [TO IMPLEMENT] 
+
+
+## list initializations, don't remove!
+  SAMBA=( )
+  SPOOF_IPS=( )
+  Block_Ping=( )
+  sshguard_params=( )
+  sshguard_moreps=( )
+  OTHER_FLOODS=( )
+  BruteForce=( )
+  IFACES=( )  #not used yet
+  PPD_SRV=( )
+  PSPD_SRV=( )
+  PISPD_SRV=( ) 
+  PIPD_SRV=( )  
+>>>>>>> e6e2b57d44b55b6fe31c1a72d5981dd8a06e5e7f
 ## end initializations
 
 
 # Path to Script  - used for  `restart`
+<<<<<<< HEAD
 SCRIPT=/etc/rc.firewall
+=======
+SCRIPT=/etc/rc.d/dfirewall
+>>>>>>> e6e2b57d44b55b6fe31c1a72d5981dd8a06e5e7f
 
 # Server is behind a router or directly connected to the internet
 ### not fully implemented
@@ -103,11 +180,21 @@ MODPROBE=/sbin/modprobe
 #
 ## List Locations
 #
+<<<<<<< HEAD
 #WHITELIST=/usr/local/etc/whitelist.txt
 #BLACKLIST=/usr/local/etc/blacklist.txt
 WHITELIST=W.txt
 BLACKLIST=B.txt
+=======
+WHITELIST=/usr/local/etc/whitelist.txt
+BLACKLIST=/usr/local/etc/blacklist.txt
+#### TODO:  change names to  dtfw_whitelist.txt
+#                            dt_fw_whitelist.txt
+#                            dt_firewall_whitelist.txt
 
+>>>>>>> e6e2b57d44b55b6fe31c1a72d5981dd8a06e5e7f
+
+### NOT USED
 # Specify External IP's
 EIP1=""
 EIP2=""
@@ -126,6 +213,174 @@ IIP6=""
 
 # IRC Services Kp's
 #IPa=""
+### end of NOT USED
+
+
+
+# true/false
+##
+# enable logging in general
+EnableLog="true"
+# log prefix for logged segments' prefixes
+LogPrefix="dtFW: "
+##
+LOG_ALL_PACKETS="false"
+##
+# Check Outbound traffic and restrict sending corrupt data
+Block_Corrupt_Outbound="true"
+##
+# icmp ping allow/deny/limit: Block Ping 
+# "false | no",  "drop",  "reject" "<mode>",  "limit" "<RATE>" "<burst>" 
+  ## RATE =  <packets> / <s|second> | <m|minute> | <h|hour> | <d|day> 
+  ## REJECT Modes: 
+  ## 1: icmp-port-unreachable 
+  ## 2: icmp-net-unreachable 
+  ## 3: icmp-host-unreachable 
+  ## 4: icmp-proto-unreachable 
+  ## 5: icmp-net-prohibited 
+  ## 6: icmp-host-prohibited 
+#Block_Ping=("false")
+Block_Ping=("no")
+#Block_Ping=("DROP")
+#Block_Ping=("reject" "3")
+#Block_Ping=("limit" "1/s" "5") 
+##
+# end true/false
+
+
+
+# Other flood protections [limit rate in FORWARD] - prevent DoS 
+#   http://netfilter.org/documentation/HOWTO/packet-filtering-HOWTO-7.html
+# <rate>/ <s|second> | <m|minute> | <h|hour> | <d|day>
+OTHER_FLOODS+=("syn flood" "1/s")
+OTHER_FLOODS+=("furtive port scanner" "1/s")
+OTHER_FLOODS+=("ping of death" "1/s")
+
+
+## sshguard
+UseSSHGuard="true"
+SSHG_TableName="sshguard"
+# Specify parameters for SSH guard, and any additional IPTABLES syntaxed parameters
+sshguard_params="-p tcp --dport 22"
+sshguard_moreps="! -s 130.157.33.0/24"
+
+
+
+# Allow Samba/HTPC on specific ip/subnet
+#SAMBA+=("ip" "ip/cidr")
+SAMBA+=("192.168.1.0/24")
+
+
+# Block Brute Force Ports + Names
+#BruteForce+=("port:(s)" "description")
+BruteForce+=("21:22" "FTP:SSH")
+BruteForce+=("41331" "webmin")
+
+
+
+
+### General Services (specific destination port)
+##  PD_SRV+=( "<DESC>" "<tcp|udp|both>" "<PORT>" )
+PD_SRV+=("HTTP" "tcp" "8080")
+#PD_SRV+=("HTTPS" "tcp" "443")
+PD_SRV+=("SSH" "tcp" "443")
+PD_SRV+=("SMPT" "tcp" "25")
+PD_SRV+=("SMPTS" "tcp" "465")
+PD_SRV+=("IRC" "both" "6667:6669")
+PD_SRV+=("torrent" "tcp" "57070:57076")
+PD_SRV+=("KDX" "tcp" "666")
+
+
+### Specific Port Services (source and destination)
+##  PSD_SRV+=( "<DESC>" "<tcp|udp|both>" "<Source PORT>" "<Destination PORT>")
+PSD_SRV+=( "TELNET bot1" "tcp" "31840:31848" "1843" )
+#PSD_SRV+=( "TELNET bot2" "tcp" "31840:31848" "1844" )
+#PSD_SRV+=( "TELNET bot3" "tcp" "31840:31848" "1845" )
+#PSD_SRV+=( "TELNET bot4" "tcp" "31840:31848" "1846" )
+
+
+### Specific Source IP:Port, Dest Port
+##  PISD_SRV+=( "<DESC>" "<tcp|udp|both>" "<src ip>" "<src port>" "<dest port>"
+#PISD_SRV+=( "TELNET bot5" "tcp" "127.0.0.1" "31840:31848" "1843" )
+#PISD_SRV+=( "TELNET bot6" "tcp" "127.0.0.1" "31840:31848" "1844" )
+#PISD_SRV+=( "TELNET bot7" "tcp" "127.0.0.1" "31840:31848" "1845" )
+PISD_SRV+=( "TELNET bot8" "tcp" "127.0.0.1" "31840:31848" "1846" )
+PISD_SRV+=( "Bnc" "tcp" "174.122.218.237" "52010:52021" "366" )
+
+
+### Specific Source IP, Dest Port
+##  PID_SRV+=( "<DESC>" "<tcp|udp|both>" "<src ip>" "<dst port | all>"
+PID_SRV+=("http configs" "tcp" "192.168.1.0/24" "8079")
+PID_SRV+=("http configs" "tcp" "192.168.3.0/24" "8079")
+PID_SRV+=("http configs" "tcp" "172.16.88.0/24" "8079")
+PID_SRV+=("ssh gamebox" "tcp" "192.168.1.6/32" "22")
+PID_SRV+=("ssh mbp" "tcp" "172.16.88.0/24" "8079")
+PID_SRV+=("synergy" "tcp" "192.168.1.6/32" "24800")
+PID_SRV+=("synergy" "tcp" "192.168.1.41/32" "24800")
+PID_SRV+=("gamebox" "both" "192.168.1.6/32" "all")
+
+
+# IP Subnets to block from spoofing
+# blocks listed addresses from INPUT on all but iface lo
+# remember WHITELIST contains ip/range of all allowed subnets
+#if [ "${IFACE}" -eq "WAN" ]; then
+SPOOF_IPS+=("0.0.0.0/8")
+SPOOF_IPS+=("127.0.0.0/8")
+SPOOF_IPS+=("10.0.0.0/8")
+SPOOF_IPS+=("172.16.0.0/12")
+SPOOF_IPS+=("192.168.0.0/16")
+SPOOF_IPS+=("224.0.0.0/3")
+## http://www.newartisans.com/2007/09/neat-tricks-with-iptables.html
+#   Scapy - check attacks with
+##   source and destination IPs specified 
+#elif [ "${IFACE}" -eq "LAN" ]; then
+
+
+## Malformed/Bad Packet drop
+# 
+DropTableName="MY_DROP"
+LOG_Droped="true"
+
+## INPUT - log all remaining inbound traffic
+INPUT_LOG_BOGUS="true"
+## INPUT - last line should REJECT with TCP RST  (tcp reset)
+#  DROP or REJECT 
+INPUT_LAST_LINE="REJECT"   # TODO: make variable a better name
+
+
+## Bandwidth Rates
+# BW_Rates="<off | packet/rate>"
+BW_Rates="1700/h"
+# hard-coded "off"
+
+
+
+
+
+
+
+
+
+#### stay the hell out of the area below this line ####
+#######################################################
+
+# if iptables location is not set, find common location
+if [ ! -x "${IPTABLES}" ]; then
+  # debian+redhat+centos
+  if [   -x /sbin/iptables     ]; then   IPTABLES=/sbin/iptables
+  # archlinux
+  elif [ -x /usr/sbin/iptables ]; then   IPTABLES=/usr/sbin/iptables
+  else
+      LOCATEIPT=`whereis iptables | awk '{print $2}'`
+      if [ -x "${LOCATEIPT}" ]; then
+          IPTABLES=${LOCATE}
+      else
+          echo "error locating iptables, please specify location or correct execution permissions"
+          exit
+      fi
+  fi
+fi
+
 
 
 # true/false
@@ -199,7 +454,11 @@ fi
 ###
 case "$1" in
   start)
+<<<<<<< HEAD
     echo -e "Starting D.T Firewall $VER"
+=======
+    echo "Starting D.T Firewall $VER"
+>>>>>>> e6e2b57d44b55b6fe31c1a72d5981dd8a06e5e7f
 
     # enable ip forwarding
     # echo 1 > /proc/sys/net/ipv4/ip_forward
@@ -212,6 +471,26 @@ case "$1" in
     $MODPROBE ip_conntrack
     $MODPROBE ip_conntrack_irc
     $MODPROBE ip_conntrack_ftp
+    if [ "${EnableLog}" == "true" -o "${EnableLog}" == "TRUE" ]; then
+      $MODPROBE ipt_LOG
+
+      # /etc/syslog.conf  :
+      ### d.t firewall
+      #kern.=debug    /var/log/firewall
+      # /sbin/service syslog restart
+      # /usr/sbin/service syslog restart  => unrecognized service
+
+      #kern.warning   /bar/log/iptables.log
+      # debian:
+      #   /etc/init.d/sysklogd restart
+      # redhat/centos:
+      #   /etc/init.d/syslog restart
+      #  --log-level 4: Level of logging. The level # 4 is for warning
+
+      #disable console logging by commenting out this line in your syslog.conf
+      #kern.* /dev/console
+    fi
+
 
     # Table Flush
     $IPTABLES -F
@@ -221,11 +500,12 @@ case "$1" in
     $IPTABLES -t mangle -X
     $IPTABLES -X
 
-    echo 'Allowing Localhost'
+    echo ' Allowing Localhost'
     #Allow localhost.
     $IPTABLES -A INPUT -t filter -s 127.0.0.1 -j ACCEPT -m comment --comment "allow localhost"
 
     # Default-Policies
+<<<<<<< HEAD
     $IPTABLES -P INPUT DROP
     $IPTABLES -P OUTPUT ACCEPT
     $IPTABLES -P FORWARD DROP
@@ -256,23 +536,88 @@ case "$1" in
     DROPPER="MY_DROP"
     $IPTABLES -N ${DROPPER}
     $IPTABLES -A ${DROPPER} -j DROP
+=======
+    ## set at END of start script, in case an error occurs and blocks SSH!
+    
+    
+    # brute force chain
+    BRUTEF="BrutForce"  # brute force table name
+    $IPTABLES -N $BRUTEF
+    $IPTABLES -A $BRUTEF -j LOG --log-prefix "${LogPrefix}brute forcer"
+    $IPTABLES -A $BRUTEF -j DROP
+
+
+
+
+
+####  TODO: make this work
+    BW_Rates="off"
+
+    #  BW_Rates section
+    ## 
+    # BW_REJECT-Chain
+    REJECTER="BW_REJECT"
+    if [ "$BW_Rates" != "off" -a "$BW_Rates" != "OFF" -a "$BW_Rates" != "disabled" -a "$BW_Rates" != "DISABLED" ]; then    
+      $IPTABLES -N $REJECTER
+
+     # BW_REJECT fill
+### TODO: enable 'http/ftp redirect/vhost' for warning
+      echo " Bandwith Rate of $BW_Rates enabled."
+      $IPTABLES -A $REJECTER -p tcp -m limit --limit $BW_Rates -j LOG --log-prefix "${LogPrefix}REJECT TCP "
+#      $IPTABLES -A $REJECTER -p tcp -j REJECT --reject-with tcp-reset
+      $IPTABLES -A $REJECTER -p udp -m limit --limit $BW_Rates -j LOG --log-prefix "${LogPrefix}REJECT UDP "
+#      $IPTABLES -A $REJECTER -p udp -j REJECT --reject-with icmp-port-unreachable
+      $IPTABLES -A $REJECTER -p icmp -m limit --limit $BW_Rates -j LOG --log-prefix "${LogPrefix}DROP ICMP "
+#      $IPTABLES -A $REJECTER -p icmp -j DROP
+      $IPTABLES -A $REJECTER -m limit --limit $BW_Rates -j LOG --log-prefix "${LogPrefix}REJECT OTHER "
+#      $IPTABLES -A $REJECTER -j REJECT --reject-with icmp-proto-unreachable
+
+      $IPTABLES -A INPUT -j $REJECTER   -m comment --comment "for bandwidth overage"
+      $IPTABLES -A OUTPUT -j $REJECTER
+
+    fi
+    ## 
+    #  end BW_Rates  section
+
+
+
+    # DropTableName-Chain
+    ## used for bad-packet dropping
+    $IPTABLES -N ${DropTableName}
+    if [ "$LOG_Droped" == "true" -o "$LOG_Droped" == "TRUE" -o "$LOG_Droped" == "yes" ]; then
+      echo " Logging bad packets."
+      $IPTABLES -A ${DropTableName} -j LOG --log-prefix "${LogPrefix}bad packet"   -m comment --comment "log bad data"
+    fi
+    $IPTABLES -A ${DropTableName} -j DROP   -m comment --comment "drop malformed data"
+>>>>>>> e6e2b57d44b55b6fe31c1a72d5981dd8a06e5e7f
 
 
     # Log All Packets
     if [ "$LOG_ALL_PACKETS" == "true" -o "$LOG_ALL_PACKETS" == "1" -o "$LOG_ALL_PACKETS" == "yes" ]; then
+<<<<<<< HEAD
       $IPTABLES -A INPUT -j LOG --log-prefix "Log All INPUT"     -m comment --comment "Log All INPUT"
       $IPTABLES -A OUTPUT -j LOG --log-prefix "Log All OUTPUT"   -m comment --comment "Log All OUTPUT"
       $IPTABLES -A FORWARD -j LOG --log-prefix "Log All FORWARD" -m comment --comment "Log All FORWARD"
+=======
+      $IPTABLES -A INPUT -j LOG --log-prefix "${LogPrefix}Log All INPUT"     -m comment --comment "Log All INPUT"
+      $IPTABLES -A OUTPUT -j LOG --log-prefix "${LogPrefix}Log All OUTPUT"   -m comment --comment "Log All OUTPUT"
+      $IPTABLES -A FORWARD -j LOG --log-prefix "${LogPrefix}Log All FORWARD" -m comment --comment "Log All FORWARD"
+>>>>>>> e6e2b57d44b55b6fe31c1a72d5981dd8a06e5e7f
     fi
 
 
     
+<<<<<<< HEAD
     # a small section for OUTPUT
+=======
+    # a small section for OUTPUT chain in FILTER table
+>>>>>>> e6e2b57d44b55b6fe31c1a72d5981dd8a06e5e7f
     ### 
     # giant if => used to check outbound packets for corruption
     OUT_BAD_PAC_DESC=()
     OUT_NEW_STATE=()
     OUT_NEW_DESC=()
+<<<<<<< HEAD
     if [ "$CHECK_OUTBOUND" == "false" -o "$CHECK_OUTBOUND" == "0" -o "$CHECK_OUTBOUND" == "no" ]; then
         # connection tracking
 	$IPTABLES -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT   -m comment --comment "connection tracking OUTPUT"
@@ -290,13 +635,35 @@ case "$1" in
     $IPTABLES -A OUTPUT -o lo -j ACCEPT   -m comment --comment "loopback iface outbound"
 
     ### loop for ACCEPT OutBound packets
+=======
+    if [ "$Block_Corrupt_Outbound" == "false" -o "$Block_Corrupt_Outbound" == "0" -o "$Block_Corrupt_Outbound" == "no" ]; then
+        # connection tracking
+        $IPTABLES -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT   -m comment --comment "connection tracking OUTPUT"
+        OUT_BAD_PAC_DESC="corrupt packets OUTPUT"
+        OUT_NEW_STATE="NEW"
+        OUT_NEW_DESC="new connections OUTPUT"
+    else
+        OUT_BAD_PAC_DESC="force check corrupt packets OUTPUT"
+        OUT_NEW_STATE="NEW,ESTABLISHED,RELATED"
+        OUT_NEW_DESC="new and connection tracking OUTPUT"
+    fi # end  giant if
+
+    # accept lo iface OUTPUT
+    $IPTABLES -A OUTPUT -o lo -j ACCEPT   -m comment --comment "loopback iface outbound"
+
+    ### loop for ACCEPT OutBound packets - whitelist
+>>>>>>> e6e2b57d44b55b6fe31c1a72d5981dd8a06e5e7f
     ## TODO
     ### end loop for ACCEPT OutBound packets
     
     # Corrupt Packet drop
     $IPTABLES -A OUTPUT -m state --state INVALID -j DROP            -m comment --comment "${OUT_BAD_PAC_DESC}"
 
+<<<<<<< HEAD
     ### loop for DROP/REJECT OutBound packets
+=======
+    ### loop for DROP/REJECT OutBound packets - blacklist
+>>>>>>> e6e2b57d44b55b6fe31c1a72d5981dd8a06e5e7f
     ## TODO
     ### end loop for DROP/REJECT OutBound packets
 
@@ -312,18 +679,29 @@ case "$1" in
     # related, or established, ACCEPT!
     $IPTABLES -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT                   -m comment --comment "connection tracking INPUT"
     $IPTABLES -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT                 -m comment --comment "connection tracking FORWARD"
+<<<<<<< HEAD
 
     # Loopback-Network-Communication allow
     $IPTABLES -A INPUT -i lo -j ACCEPT    -m comment --comment "loopback iface inbound"
    
 
 
+=======
+
+    # Loopback-Network-Communication allow
+    $IPTABLES -A INPUT -i lo -j ACCEPT    -m comment --comment "loopback iface inbound"
+   
+
+    # section for FORWARD chain in FILTER table
+    ##
+>>>>>>> e6e2b57d44b55b6fe31c1a72d5981dd8a06e5e7f
     # unclean data (attacks, corrupt, ect) - FORWARD chain
     ### 
     # Corrupt Packet drop 
     $IPTABLES -A FORWARD -m state --state INVALID -j DROP   -m comment --comment "corrupt packets FORWARD"
     # Stealth Scans etc. DROPpen
     # Non Flags 
+<<<<<<< HEAD
     $IPTABLES -A FORWARD -p tcp --tcp-flags ALL NONE -j $DROPPER   -m comment --comment "stealth scans"
     # SYN and FIN
     $IPTABLES -A FORWARD -p tcp --tcp-flags SYN,FIN SYN,FIN -j $DROPPER   -m comment --comment "SYN and FIN" 
@@ -361,12 +739,83 @@ case "$1" in
     
 
 
+=======
+    $IPTABLES -A FORWARD -p tcp --tcp-flags ALL NONE -j $DropTableName   -m comment --comment "stealth scans"
+    # SYN and FIN
+    $IPTABLES -A FORWARD -p tcp --tcp-flags SYN,FIN SYN,FIN -j $DropTableName   -m comment --comment "SYN and FIN" 
+    # SYN and RST set at same time
+    $IPTABLES -A FORWARD -p tcp --tcp-flags SYN,RST SYN,RST -j $DropTableName   -m comment --comment "SYN and RST at same time"
+    # FIN and RST set at same time
+    $IPTABLES -A FORWARD -p tcp --tcp-flags FIN,RST FIN,RST -j $DropTableName   -m comment --comment "FIN and RST at same time"
+    # FIN without ACK
+    $IPTABLES -A FORWARD -p tcp --tcp-flags ACK,FIN FIN -j $DropTableName   -m comment --comment "FIN w-o ACK"
+    # PSH without ACK
+    $IPTABLES -A FORWARD -p tcp --tcp-flags ACK,PSH PSH -j $DropTableName   -m comment --comment "PSH w-o ACK"
+    # URG without ACK
+    $IPTABLES -A FORWARD -p tcp --tcp-flags ACK,URG URG -j $DropTableName   -m comment --comment "URG w-o ACK"
+# added FORWARDs - copyied from INPUT
+    # XMAS packets
+    $IPTABLES -A FORWARD -p tcp --tcp-flags ALL ALL -j $DropTableName    -m comment --comment "XMAS packet drop"
+    # Drop Null Packets
+    $IPTABLES -A FORWARD -p tcp --tcp-flags ALL NONE -j $DropTableName   -m comment --comment "NULL packet drop"
+    # more badflags  http://pikt.org/pikt/samples/iptables_tcp_flags_programs.cfg.html
+    $IPTABLES -A FORWARD -p tcp --tcp-flags ALL FIN,PSH,URG -j $DropTableName          -m comment --comment "more badflags"
+    $IPTABLES -A FORWARD -p tcp --tcp-flags ALL SYN,FIN,PSH,URG -j $DropTableName      -m comment --comment "more badflags"
+    $IPTABLES -A FORWARD -p tcp --tcp-flags ALL SYN,RST,ACK,FIN,URG -j $DropTableName  -m comment --comment "more badflags"
+    # pettingers.org/code/firewall.html
+    $IPTABLES -A FORWARD ! -i lo -p tcp -m tcp --tcp-flags FIN,SYN,RST,PSH,ACK,URG NONE -j $DropTableName -m comment --comment "from pettingers.org"
+    # Force SYN packets check
+    $IPTABLES -A FORWARD -p tcp ! --syn -m state --state NEW -j $DropTableName  -m comment --comment "force SYN packets check"
+    # Force Fragments packets check
+    $IPTABLES -A FORWARD -f -j $DropTableName   -m comment --comment "force fragment packet check"
+    ###
+    # end unclean data - OUTPUT chain
+
+    ### Other flood protections - limit DoS
+    # limits rate in FORWARD
+    # http://netfilter.org/documentation/HOWTO/packet-filtering-HOWTO-7.html
+    #    iptables -A FORWARD -p tcp --syn -m limit --limit 1/s -j ACCEPT
+    #    iptables -A FORWARD -p tcp --tcp-flags SYN,ACK,FIN,RST RST -m limit --limit 1/s -j ACCEPT
+    #    iptables -A FORWARD -p icmp --icmp-type echo-request -m limit --limit 1/s -j ACCEPT
+    # TODO: research wtf those 3 lines mean
+    for (( i=0; i< ${#OTHER_FLOODS[@]}; i++ ))
+    do
+      if (( $i % 2 == 0 )); then
+        OFP=( )
+        if [ "${OTHER_FLOODS[$i]}"   == "syn flood" ]; then
+          OFP="-p tcp --syn -m limit"
+        elif [ "${OTHER_FLOODS[$i]}" == "furtive port scanner" ]; then
+          OFP="-p tcp --tcp-flags SYN,ACK,FIN,RST RST"
+        elif [ "${OTHER_FLOODS[$i]}" == "ping of death" ]; then
+          OFP="-p icmp --icmp-type echo-request"
+        else
+          echo "there is no rule type for OTHER_FLOODS=(\"${OTHER_FLOODS[$i]}\" \"${OTHER_FLOODS[$((i+1))]}\"), skipping it."
+        fi
+          
+        if [ "${OFP}" != "" ]; then
+          $IPTABLES -A FORWARD ${OFP} -m limit --limit ${OTHER_FLOODS[$((i+1))]} -j ACCEPT   -m comment --comment "limit DoS ${OTHER_FLOODS[$i]}"
+        fi
+      fi
+    done
+
+    # allow FORWARD after all them bad packet checks
+    $IPTABLES -A FORWARD ! -i ppp0 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT   -m comment --comment "connection tracking FORWARD"
+    ##
+    # end FORWARD chain in FILTER table
+    
+    
+
+
+    #
+    ## FILTER INPUT chain
+>>>>>>> e6e2b57d44b55b6fe31c1a72d5981dd8a06e5e7f
     # unclean data (attacks, corrupt, ect) - INPUT chain
     ### 
     # Corrupt Packet drop 
     $IPTABLES -A INPUT -m state --state INVALID -j DROP     -m comment --comment "corrupt packets INPUT"
     # Stealth Scans etc. DROPpen
     # Non Flags 
+<<<<<<< HEAD
     $IPTABLES -A INPUT -p tcp --tcp-flags ALL NONE -j $DROPPER     -m comment --comment "stealth scans"
     # SYN and FIN
     $IPTABLES -A INPUT -p tcp --tcp-flags SYN,FIN SYN,FIN -j $DROPPER     -m comment --comment "SYN and FIN" 
@@ -394,12 +843,42 @@ case "$1" in
     $IPTABLES -A INPUT -p tcp ! --syn -m state --state NEW -j $DROPPER   -m comment --comment "force SYN packets check"
     # Force Fragments packets check
     $IPTABLES -A INPUT -f -j $DROPPER   -m comment --comment "force fragment packet check"
+=======
+    $IPTABLES -A INPUT -p tcp --tcp-flags ALL NONE -j $DropTableName     -m comment --comment "stealth scans"
+    # SYN and FIN
+    $IPTABLES -A INPUT -p tcp --tcp-flags SYN,FIN SYN,FIN -j $DropTableName     -m comment --comment "SYN and FIN" 
+    # SYN and RST set at same time
+    $IPTABLES -A INPUT -p tcp --tcp-flags SYN,RST SYN,RST -j $DropTableName     -m comment --comment "SYN and RST at same time"
+    # FIN and RST set at same time
+    $IPTABLES -A INPUT -p tcp --tcp-flags FIN,RST FIN,RST -j $DropTableName     -m comment --comment "FIN and RST at same time"
+    # FIN without ACK
+    $IPTABLES -A INPUT -p tcp --tcp-flags ACK,FIN FIN -j $DropTableName     -m comment --comment "FIN w-o ACK"
+    # PSH without ACK
+    $IPTABLES -A INPUT -p tcp --tcp-flags ACK,PSH PSH -j $DropTableName     -m comment --comment "PSH w-o ACK"
+    # URG without ACK
+    $IPTABLES -A INPUT -p tcp --tcp-flags ACK,URG URG -j $DropTableName     -m comment --comment "URG w-o ACK"
+    # XMAS packets
+    $IPTABLES -A INPUT -p tcp --tcp-flags ALL ALL -j $DropTableName    -m comment --comment "XMAS packet drop"
+    # Drop Null Packets
+    $IPTABLES -A INPUT -p tcp --tcp-flags ALL NONE -j $DropTableName   -m comment --comment "NULL packet drop"
+    # more badflags  http://pikt.org/pikt/samples/iptables_tcp_flags_programs.cfg.html
+    $IPTABLES -A INPUT -p tcp --tcp-flags ALL FIN,PSH,URG -j $DropTableName          -m comment --comment "more badflags"
+    $IPTABLES -A INPUT -p tcp --tcp-flags ALL SYN,FIN,PSH,URG -j $DropTableName      -m comment --comment "more badflags"
+    $IPTABLES -A INPUT -p tcp --tcp-flags ALL SYN,RST,ACK,FIN,URG -j $DropTableName  -m comment --comment "more badflags"
+    # pettingers.org/code/firewall.html
+    $IPTABLES -A INPUT ! -i lo -p tcp -m tcp --tcp-flags FIN,SYN,RST,PSH,ACK,URG NONE -j $DropTableName -m comment --comment "from pettingers.org"
+    # Force SYN packets check
+    $IPTABLES -A INPUT -p tcp ! --syn -m state --state NEW -j $DropTableName   -m comment --comment "force SYN packets check"
+    # Force Fragments packets check
+    $IPTABLES -A INPUT -f -j $DropTableName   -m comment --comment "force fragment packet check"
+>>>>>>> e6e2b57d44b55b6fe31c1a72d5981dd8a06e5e7f
     ###
     # end unclean data - INPUT chain
 
 
 
 
+<<<<<<< HEAD
     # Drop all packets to port 111 except those from localhost
     $IPTABLES -A INPUT ! -s 127.0.0.0/8 -p tcp --dport 111 -j DROP   -m comment --comment "RPC related, allow only localhost"
 
@@ -417,10 +896,46 @@ case "$1" in
 #   $IPTABLES -I INPUT ! -i lo -s 172.16.0.0/12  -j DROP   -m comment --comment "block spoofing"
 #WAN#    $IPTABLES -I INPUT ! -i lo -s 192.168.0.0/16 -j DROP   -m comment --comment "block spoofing"
 #   $IPTABLES -I INPUT ! -i lo -s 127.0.0.0/8    -j DROP   -m comment --comment "block spoofing"
+=======
 
+    # Drop all packets to port 111 except those from localhost
+    $IPTABLES -A INPUT ! -s 127.0.0.0/8 -p tcp --dport 111 -j DROP   -m comment --comment "RPC related, allow only localhost"
+>>>>>>> e6e2b57d44b55b6fe31c1a72d5981dd8a06e5e7f
+
+    # kill off identd quick
+    $IPTABLES -A INPUT -p tcp ! -i lo   --dport 113 -j REJECT --reject-with tcp-reset   -m comment --comment "kill off identd quick"
+
+    # Don't log route packets coming from routers - too much logging
+    $IPTABLES -A INPUT -p udp ! -i lo   --dport 520 -j REJECT   -m comment --comment "do not log route packets from routers"
+
+    
+      
+    
+    # Block Spoofing - WAN ONLY!
+    
+#WAN#    $IPTABLES -I INPUT ! -i lo -s  10.0.0.0/8    -j DROP   -m comment --comment "block spoofing"
+#   $IPTABLES -I INPUT ! -i lo -s 172.16.0.0/12  -j DROP   -m comment --comment "block spoofing"
+#WAN#    $IPTABLES -I INPUT ! -i lo -s 192.168.0.0/16 -j DROP   -m comment --comment "block spoofing"
+#   $IPTABLES -I INPUT ! -i lo -s 127.0.0.0/8    -j DROP   -m comment --comment "block spoofing"
+
+# Reject packets from RFC1918 class networks (i.e., spoofed)
+# iptables -A INPUT -s 10.0.0.0/8     -j DROP
+# iptables -A INPUT -s 169.254.0.0/16 -j DROP
+# iptables -A INPUT -s 172.16.0.0/12  -j DROP
+# iptables -A INPUT -s 127.0.0.0/8    -j DROP
+# 
+# iptables -A INPUT -s 224.0.0.0/4      -j DROP
+# iptables -A INPUT -d 224.0.0.0/4      -j DROP
+# iptables -A INPUT -s 240.0.0.0/5      -j DROP
+# iptables -A INPUT -d 240.0.0.0/5      -j DROP
+# iptables -A INPUT -s 0.0.0.0/8        -j DROP
+# iptables -A INPUT -d 0.0.0.0/8        -j DROP
+# iptables -A INPUT -d 239.255.255.0/24 -j DROP
+# iptables -A INPUT -d 255.255.255.255  -j DROP
 
 
     # Block Ping
+<<<<<<< HEAD
     if [ "${BLOCK_PING[0]}" == "true" -o "${BLOCK_PING[0]}" == "1" -o "${BLOCK_PING[0]}" == "yes" ]; then
       if [ "${BLOCK_PING[1]}" == "DROP" -o "${BLOCK_PING[1]}" == "drop" ]; then	
 	$IPTABLES  -A INPUT -p icmp --icmp-type echo-request -j DROP     -m comment --comment "drop ping"
@@ -498,6 +1013,215 @@ case "$1" in
 
     # SMTPS
 #    $IPTABLES -A INPUT -m state --state NEW -p tcp --dport 465 -j ACCEPT
+=======
+    if [ $"${Block_Ping[0]}" == "false" -o "${Block_Ping[0]}" == "FALSE" -o "${Block_Ping[0]}" == "no" ]; then
+      $IPTABLES  -A INPUT -p icmp --icmp-type echo-request -j ACCEPT   -m comment --comment "allow ping"
+      echo " Ping: allowed."
+    elif [ "${Block_Ping[0]}" == "drop" -o "${Block_Ping[0]}" == "DROP" ]; then 
+      $IPTABLES  -A INPUT -p icmp --icmp-type echo-request -j DROP     -m comment --comment "drop ping"
+    elif [ "${Block_Ping[0]}" == "reject" -o "${Block_Ping[0]}" == "REJECT" ]; then 
+      sendBack=( )
+      case "${Block_Ping[1]}" in
+          1|icmp-port-unreachable)
+              sendBack="icmp-port-unreachable"  ;;
+          2|icmp-net-unreachable)
+              sendBack="icmp-net-unreachable"   ;;
+          3|icmp-host-unreachable)
+              sendBack="icmp-host-unreachable"  ;;
+          4|icmp-proto-unreachable)
+              sendBack="icmp-proto-unreachable" ;;
+          5|icmp-net-prohibited)
+              sendBack="icmp-net-prohibited"    ;;
+          6|icmp-host-prohibited)
+              sendBack="icmp-host-prohibited"   ;;
+          *)
+              echo " Block Ping Reject bounce-back-error typo: \"${Block_Ping[1]}\", using \"icmp-port-unreachable\"."
+              sendBack="icmp-port-unreachable"  ;;
+      esac
+      $IPTABLES -A INPUT -p icmp --icmp-type echo-request -j REJECT --reject-with ${sendBack} -m comment --comment "reject ping" 
+      echo " Ping: Reject with ${sendBack}."
+    ### ICMP Rate limits (elimiates some SMURF packets)      
+    elif [ "${Block_Ping[0]}" == "limit" -o "${Block_Ping[0]}" == "LIMIT" ]; then
+        # dont know what the first two lines do - TODO: research wtf those 2 lines mean
+        $IPTABLES -A INPUT -p icmp -m icmp --icmp-type address-mask-request -j DROP
+        $IPTABLES -A INPUT -p icmp -m icmp --icmp-type timestamp-request -j DROP
+        $IPTABLES -A INPUT -p icmp -m icmp -m limit --limit ${Block_Ping[1]} --limit-burst ${Block_Ping[2]} -j ACCEPT
+        echo " Ping: Limited at ${Block_Ping[1]} with burst of ${Block_Ping[2]}."
+    fi
+
+
+
+       
+
+
+
+    
+
+# HTTP flood check
+# http://lists.netfilter.org/pipermail/netfilter/2003-June/044762.html
+#    $IPTABLES -N flood-chk
+#    $IPTABLES -A INPUT -p tcp --dport 8080 --syn -j flood-chk -m comment --comment "HEEEEERRRRRRRRRR"
+#    $IPTABLES -A flood-chk -m limit --limit 1/sec --limit-burst 2 -j RETURN
+#    $IPTABLES -A flood-chk -j LOG --log-prefix "${LogPrefix}flood packet"
+#    $IPTABLES -A flood-chk -j DROP | REJECT
+
+
+    ### Other flood protections - limit DoS [ Implemented in FORWARD section ]
+    # limits rate in FORWARD - fuction here for future FLOOD additions (for INPUT table)
+#    for (( i=0; i< ${#OTHER_FLOODS[@]}; i++ ))
+#    do
+#      if (( $i % 2 == 0 )); then
+#        OFP=( )
+#        if [ "${OTHER_FLOODS[$i]}"   == "syn flood" ]; then
+#          OFP="-p tcp --syn -m limit"
+#        elif [ "${OTHER_FLOODS[$i]}" == "furtive port scanner" ]; then
+#          OFP="-p tcp --tcp-flags SYN,ACK,FIN,RST RST"
+#        elif [ "${OTHER_FLOODS[$i]}" == "ping of death" ]; then
+#          OFP="-p icmp --icmp-type echo-request"
+#        else
+#          echo "there is no rule type for OTHER_FLOODS=(\"${OTHER_FLOODS[$i]}\" \"${OTHER_FLOODS[$((i+1))]}\"), skipping it."
+#        fi
+#
+#        if [ "${OFP}" != "" ]; then
+#          $IPTABLES -A FORWARD ${OFP} -m limit --limit ${OTHER_FLOODS[$((i+1))]} -j ACCEPT   -m comment --comment "limit DoS ${OTHER_FLOODS[$i]}"
+#        fi
+#      fi
+#    done
+
+
+    
+    
+    
+   # Block Brute Force 
+   for (( i=0; i< ${#BruteForce[@]}; i++ ))
+   do
+     if (( $i % 2 == 0 )); then
+       $IPTABLES -A INPUT -p tcp --dport ${BruteForce[$i]} \
+         -m state --state NEW -m recent --set --name "BF ${BruteForce[$((i+1))]}"  \
+         -m comment --comment "${BruteForce[$((i+1))]}"
+       $IPTABLES -A INPUT -p tcp --dport ${BruteForce[$i]} \
+         -m state --state NEW -m recent --update --seconds 60 --hitcount 8 --rttl --name "BF${BruteForce[$((i+1))]}" -j ${BRUTEF} \
+         -m comment --comment "${BruteForce[$((i+1))]}"
+     fi
+   done
+   
+
+
+
+    
+### general services (allow all sources ips):port:desc
+#   PD_SRV+=( "<DESC>" "<tcp|udp|both>" "<PORT>" )
+    for (( i=0; i< ${#PD_SRV[@]}; i++ ))
+    do
+      if (( $i % 3 == 0 )); then
+        proto=( )
+        if [ "${PD_SRV[$((i+1))]}" == "tcp" -o "${PD_SRV[$((i+1))]}" == "TCP" ]; then
+          proto="tcp"
+        elif [ "${PD_SRV[$((i+1))]}" == "udp" -o "${PD_SRV[$((i+1))]}" == "UDP" ]; then
+          proto="udp"
+        elif [ "${PD_SRV[$((i+1))]}" == "both" -o "${PD_SRV[$((i+1))]}" == "BOTH" ]; then
+          $IPTABLES -t filter -A INPUT -m state --state NEW -p tcp      --dport ${PD_SRV[$((i+2))]} -j ACCEPT -m comment --comment "${PD_SRV[$i]} tcp"
+          proto="udp"
+        fi
+        
+        $IPTABLES   -t filter -A INPUT -m state --state NEW -p ${proto} --dport ${PD_SRV[$((i+2))]} -j ACCEPT -m comment --comment "${PD_SRV[$i]} ${proto}"
+      fi
+    done
+
+
+### specific source and dest ports (all ip inbound)
+#   PSD_SRV+=( "<DESC>" "<tcp|udp|both>" "<Source PORT>" "<Destination PORT>")
+    for (( i=0; i< ${#PSD_SRV[@]}; i++ ))
+    do
+      if (( $i % 4 == 0 )); then
+        proto=( )
+        if [ "${PSD_SRV[$((i+1))]}" == "tcp" -o "${PSD_SRV[$((i+1))]}" == "TCP" ]; then
+          proto="tcp"
+        elif [ "${PSD_SRV[$((i+1))]}" == "udp" -o "${PSD_SRV[$((i+1))]}" == "UDP" ]; then
+          proto="udp"
+        elif [ "${PSD_SRV[$((i+1))]}" == "both" -o "${PSD_SRV[$((i+1))]}" == "BOTH" ]; then
+          $IPTABLES -t filter -A INPUT -m state --state NEW -p tcp      --sport ${PSD_SRV[$((i+2))]} --dport ${PSD_SRV[$((i+3))]} -j ACCEPT -m comment --comment "${PSD_SRV[$i]} tcp"
+          proto="udp"
+        fi
+
+        $IPTABLES   -t filter -A INPUT -m state --state NEW -p ${proto} --sport ${PSD_SRV[$((i+2))]} --dport ${PSD_SRV[$((i+3))]} -j ACCEPT -m comment --comment "${PSD_SRV[$i]} ${proto}"
+      fi
+    done
+
+### Specific Source IP:Port, Dest Port
+#   PISD_SRV+=( "<DESC>" "<tcp|udp|both>" "<src ip>" "<src port>" "<dest port>"
+    for (( i=0; i< ${#PISD_SRV[@]}; i++ ))
+    do
+      if (( $i % 5 == 0 )); then
+        proto=( )
+        if [ "${PISD_SRV[$((i+1))]}" == "tcp" -o "${PISD_SRV[$((i+1))]}" == "TCP" ]; then
+          proto="tcp"
+        elif [ "${PISD_SRV[$((i+1))]}" == "udp" -o "${PISD_SRV[$((i+1))]}" == "UDP" ]; then
+          proto="udp"
+        elif [ "${PISD_SRV[$((i+1))]}" == "both" -o "${PISD_SRV[$((i+1))]}" == "BOTH" ]; then
+          $IPTABLES -t filter -A INPUT -m state --state NEW -s ${PISD_SRV[$((i+2))]} -p tcp \
+             --sport ${PISD_SRV[$((i+3))]} --dport ${PISD_SRV[$((i+4))]} -j ACCEPT \
+             -m comment --comment "${PISD_SRV[$i]} tcp"
+          proto="udp"
+        fi
+        
+        $IPTABLES   -t filter -A INPUT -m state --state NEW -s ${PISD_SRV[$((i+2))]} -p ${proto} \
+             --sport ${PISD_SRV[$((i+3))]} --dport ${PISD_SRV[$((i+4))]} -j ACCEPT \
+             -m comment --comment "${PISD_SRV[$i]} ${proto}"
+      fi
+    done
+
+
+### Specific Source IP, Dest Port
+#   PID_SRV+=( "<DESC>" "<tcp|udp|both>" "<src ip>" "<dst port | all>"
+    for (( i=0; i< ${#PID_SRV[@]}; i++ ))
+    do
+      if (( $i % 4 == 0 )); then
+        proto=( )
+        port=( )
+        if [ ${PID_SRV[$((i+3))]} == "all" -o ${PID_SRV[$((i+3))]} == "ALL" ]; then
+            dport=""
+        else
+            dport="--dport ${PID_SRV[$((i+3))]}"
+        fi
+        
+        if [ "${PID_SRV[$((i+1))]}" == "tcp" -o "${PID_SRV[$((i+1))]}" == "TCP" ]; then
+          proto="tcp"
+        elif [ "${PID_SRV[$((i+1))]}" == "udp" -o "${PID_SRV[$((i+1))]}" == "UDP" ]; then
+          proto="udp"
+        elif [ "${PID_SRV[$((i+1))]}" == "both" -o "${PID_SRV[$((i+1))]}" == "BOTH" ]; then
+          $IPTABLES -t filter -A INPUT -m state --state NEW -s ${PID_SRV[$((i+2))]} -p tcp \
+            ${dport} -j ACCEPT -m comment --comment "${PID_SRV[$i]} tcp"
+          proto="udp"
+        fi
+
+        $IPTABLES   -t filter -A INPUT -m state --state NEW -s ${PID_SRV[$((i+2))]} -p ${proto} \
+            ${dport} -j ACCEPT -m comment --comment "${PID_SRV[$i]} ${proto}"
+      fi
+    done
+
+
+
+
+
+
+    # IMPLEMENTED
+      #Synergy
+      #    $IPTABLES -A INPUT -m state --state NEW -p tcp --dport 24800 -j ACCEPT
+      #    $IPTABLES -A INPUT -m state --state NEW -p tcp --dport 24800 -s  $IIP5/32 -j ACCEPT
+      ### force local!
+       #    $IPTABLES -t filter -I INPUT 1 -p tcp --dport 24800 -s  $EIP1/32 -j ACCEPT  -m comment --comment "synergy"
+       #    $IPTABLES -t filter -I INPUT 2 -p tcp --dport 24800 -s  $EIP5/32 -j ACCEPT  -m comment --comment "synergy"
+       #    $IPTABLES -t filter -I INPUT 3 -p tcp --dport 24800 ! -s  $EIP1/32 -j DROP  -m comment --comment "synergy"
+
+
+
+
+    # RUTorrent
+#    $IPTABLES -t filter -I INPUT 1 -p tcp --sport 5000 --dport  41843 ! -s $EIP1/32 -j DROP
+
+
+>>>>>>> e6e2b57d44b55b6fe31c1a72d5981dd8a06e5e7f
     
     
     
@@ -511,6 +1235,7 @@ case "$1" in
 #    $IPTABLES -t filter -A INPUT -p tcp --dport 6667 ! -s $IPa/32 -j DROP
 #    $IPTABLES -t filter -A INPUT -p udp --dport 56665 ! -s $IPa/32 -j DROP
 
+<<<<<<< HEAD
     # IRC Standard - 
 #    $IPTABLES -t filter -A INPUT -p tcp --dport 6667:6669 -j ACCEPT
 #    $IPTABLES -t filter -A INPUT -p udp --dport 6667:6669 -j ACCEPT
@@ -535,17 +1260,52 @@ case "$1" in
 
     #KDX
 #    $IPTABLES -A INPUT -m state --state NEW -p tcp --dport 666 -j ACCEPT       
+=======
+     # IMPLEMENTED
+         # IRC Standard - 
+     #    $IPTABLES -t filter -A INPUT -p tcp --dport 6667:6669 -j ACCEPT
+     #    $IPTABLES -t filter -A INPUT -p udp --dport 6667:6669 -j ACCEPT
+         #IRC SSL      
+     #    $IPTABLES -t filter -A INPUT -p tcp --dport 6697:6699 -j ACCEPT
+     #    $IPTABLES -t filter -A INPUT -p udp --dport 6697:6699 -j ACCEPT
+     ### SOURCE PORT!
+          # TELNET bot1
+     #    $IPTABLES -t filter -I INPUT 1 -p tcp --sport 31840:31848 --dport  1843 ! -s $EIP1/32 -j DROP
+         # TELNET bot2
+     #    $IPTABLES -t filter -I INPUT 1 -p tcp --sport 31840:31848 --dport  1844 ! -s $EIP1/32 -j DROP
+         # TELNET bot3
+     #    $IPTABLES -t filter -I INPUT 1 -p tcp --sport 31840:31848 --dport  1845 ! -s $EIP1/32 -j DROP
+         # TELNET bot4
+     #    $IPTABLES -t filter -I INPUT 1 -p tcp --sport 31840:31848 --dport  1846 ! -s $EIP1/32 -j DROP
+
+
+         # Bnc
+     #    $IPTABLES -t filter -I INPUT 1 -p tcp --sport 52010:52021 --dport  3666 ! -s $EIP1/32 -j DROP
+
+
+
+         #KDX
+     #    $IPTABLES -A INPUT -m state --state NEW -p tcp --dport 666 -j ACCEPT       
+>>>>>>> e6e2b57d44b55b6fe31c1a72d5981dd8a06e5e7f
 
 
 
     #FTP
     $IPTABLES -A INPUT -m state --state NEW -p tcp --dport 21 -j ACCEPT  -m comment --comment "FTP"
 #    $IPTABLES -A INPUT -m state --state NEW -p tcp --dport 34000:35000 -j ACCEPT
+<<<<<<< HEAD
+=======
+
+>>>>>>> e6e2b57d44b55b6fe31c1a72d5981dd8a06e5e7f
     # Specific External Ip's for FTP
     # Accept - Drop
 #    $IPTABLES -t filter -I INPUT 1 -p tcp --dport 21 -s  $EIP1/32 -j ACCEPT
 #    $IPTABLES -t filter -I INPUT 2 -p tcp --dport 21 -s  $EIP2/16 -j ACCEPT
 #    $IPTABLES -t filter -I INPUT 3 -p tcp --dport 21 ! -s $EIP1/32 -j DROP
+<<<<<<< HEAD
+=======
+
+>>>>>>> e6e2b57d44b55b6fe31c1a72d5981dd8a06e5e7f
     # Specific Ip's for FTP Passive Ports
     $IPTABLES -A INPUT -m state --state NEW -p tcp --dport 35000:36000 -j ACCEPT -m comment --comment "ftp passive"
 #    $IPTABLES -A INPUT -m state --state NEW -p tcp --dport 35000:36000 -j ACCEPT
@@ -576,6 +1336,7 @@ case "$1" in
 
 
 
+<<<<<<< HEAD
 
     $IPTABLES -A INPUT -m state --state NEW -p tcp --dport 22 -j ACCEPT -m comment --comment "ssh"
     # Specific Ip's for SSH
@@ -589,6 +1350,21 @@ case "$1" in
     # Reject
 #    $IPTABLES -t filter -I INPUT 1 -p tcp --dport 22 ! -s $EIP5/32 -j REJECT
 
+=======
+
+    #    $IPTABLES -A INPUT -m state --state NEW -p tcp --dport 22 -j ACCEPT -m comment --comment "ssh"
+        # Specific Ip's for SSH
+        # Accept - Drop
+    #    $IPTABLES -t filter -I INPUT 1 -p tcp --dport 22 -s  $IIP1/32 -j ACCEPT
+    #    $IPTABLES -t filter -I INPUT 2 -p tcp --dport 22 -s  $IIP2/32 -j ACCEPT
+    #    $IPTABLES -t filter -I INPUT 3 -p tcp --dport 22 -s  $IIP3/32 -j ACCEPT
+    #    $IPTABLES -t filter -I INPUT 4 -p tcp --dport 22 -s  $IIP4/32 -j ACCEPT
+    #    $IPTABLES -t filter -I INPUT 5 -p tcp --dport 22 -s  $IIP5/32 -j ACCEPT
+    #    $IPTABLES -t filter -I INPUT 6 -p tcp --dport 22 ! -s $IIP1/32 -j DROP
+        # Reject
+    #    $IPTABLES -t filter -I INPUT 1 -p tcp --dport 22 ! -s $EIP5/32 -j REJECT
+
+>>>>>>> e6e2b57d44b55b6fe31c1a72d5981dd8a06e5e7f
 
     # Samba
     # HTPC
@@ -599,11 +1375,19 @@ case "$1" in
       $IPTABLES -A INPUT -m state --state NEW -m tcp -p tcp -s ${SAMBA[$i]} --dport 139 -j ACCEPT   -m comment --comment "SAMBA $i"
       $IPTABLES -A INPUT -m state --state NEW -m tcp -p tcp -s ${SAMBA[$i]} --dport 445 -j ACCEPT   -m comment --comment "SAMBA $i"
     done
+<<<<<<< HEAD
     # All IPs
 #     $IPTABLES -A INPUT -p udp -m udp --dport 137 -j ACCEPT
 #     $IPTABLES -A INPUT -p udp -m udp --dport 138 -j ACCEPT
 #     $IPTABLES -A INPUT -m state --state NEW -m tcp -p tcp --dport 139 -j ACCEPT
 #     $IPTABLES -A INPUT -m state --state NEW -m tcp -p tcp --dport 445 -j ACCEPT
+=======
+        # All IPs
+    #     $IPTABLES -A INPUT -p udp -m udp --dport 137 -j ACCEPT
+    #     $IPTABLES -A INPUT -p udp -m udp --dport 138 -j ACCEPT
+    #     $IPTABLES -A INPUT -m state --state NEW -m tcp -p tcp --dport 139 -j ACCEPT
+    #     $IPTABLES -A INPUT -m state --state NEW -m tcp -p tcp --dport 445 -j ACCEPT
+>>>>>>> e6e2b57d44b55b6fe31c1a72d5981dd8a06e5e7f
 
 
 
@@ -615,9 +1399,13 @@ case "$1" in
 
 
 
+<<<<<<< HEAD
     # Default-Policies for REJECT
     $IPTABLES -A INPUT -j $REJECTER
     $IPTABLES -A OUTPUT -j $REJECTER
+=======
+    
+>>>>>>> e6e2b57d44b55b6fe31c1a72d5981dd8a06e5e7f
 
     # Max. 500/Seconds (5/Jiffie) send
 #    echo 5 > /proc/sys/net/ipv4/icmp_ratelimit
@@ -644,6 +1432,7 @@ case "$1" in
    #
     bl=1
    for x in `grep -v ^# $BLACKLIST | awk '{print $1}'`; do
+<<<<<<< HEAD
           echo "Denying $x..."
           $IPTABLES -I INPUT ${bl} -t filter -s $x -j DROP   -m comment --comment "blacklist ${bl}"
 	  bl=$((bl+1));
@@ -653,6 +1442,21 @@ case "$1" in
    $IPTABLES -N sshguard
    $IPTABLES -I INPUT 1 -p tcp --dport 22 -j sshguard   -m comment --comment "ssh guard"
    
+=======
+       if [ "$bl" == "1" ]; then  echo " Denying Blacklisted IPs:"; fi
+       echo "    $bl: $x"
+       $IPTABLES -I INPUT ${bl} -t filter -s $x -j DROP   -m comment --comment "blacklist ${bl}"
+       bl=$((bl+1));
+   done 
+
+   # SSH Guard
+   if [ "${UseSSHGuard}" == "true" -o "${UseSSHGuard}" == "TRUE" ]; then
+     $IPTABLES -N ${SSHG_TableName}
+     $IPTABLES -I INPUT 1 ${sshguard_params} ${sshguard_moreps} -j ${SSHG_TableName}   -m comment --comment "sshguard"
+     echo " SSHGuard initiated:"
+     echo "   iptables -I INPUT 1 ${sshguard_params} ${sshguard_moreps} -j ${SSHG_TableName} -m comment --comment \"sshguard\""
+   fi
+>>>>>>> e6e2b57d44b55b6fe31c1a72d5981dd8a06e5e7f
     
    #
    ## Whitelist
@@ -660,6 +1464,7 @@ case "$1" in
 ### find . -type f | grep -s ".*\.sh$" | while read a; do chmod +x "$a"; done
     wl=1;
    for x in `grep -v ^# $WHITELIST | awk '{print $1}'`; do
+<<<<<<< HEAD
           echo "Permitting $x..."
           $IPTABLES -I INPUT ${wl} -t filter -s $x -j ACCEPT   -m comment --comment "whitelist ${wl}"
 	  wl=$((wl+1));
@@ -668,6 +1473,38 @@ case "$1" in
    
 
 
+=======
+       if [ "$wl" == "1" ]; then  echo " Permitting Whitelisted IPs:"; fi
+          echo "    $wl: $x"
+          $IPTABLES -I INPUT ${wl} -t filter -s $x -j ACCEPT   -m comment --comment "whitelist ${wl}"
+          wl=$((wl+1));
+   done
+
+   
+   
+   ## INPUT_LOG_BOGUS
+   if [ "$INPUT_LOG_BOGUS" == "true" -o "$INPUT_LOG_BOGUS" == "TRUE" ]; then
+     echo " Logging bogus/leftover inbound traffic."
+     $IPTABLES -A INPUT -j LOG --log-prefix "${LogPrefix}log bogus connections"   -m comment --comment "log bogus connections"
+   fi
+   
+   ## INPUT_LAST_LINE
+   if [ "$INPUT_LAST_LINE" == "REJECT" -o "$INPUT_LAST_LINE" == "reject" ]; then
+     $IPTABLES -A INPUT -p tcp -j REJECT --reject-with tcp-reset               -m comment --comment "send tcp reset"
+     #$IPTABLES -A INPUT -p udp -j DROP                             -m comment --comment "drop udp"
+     $IPTABLES -A INPUT -p udp -j REJECT --reject-with icmp-port-unreachable   -m comment --comment "port unreachable udp"
+   fi
+
+   
+   # Default-Policies   
+   $IPTABLES -P INPUT DROP
+   $IPTABLES -P OUTPUT DROP
+   $IPTABLES -P FORWARD DROP
+   
+   
+   
+   
+>>>>>>> e6e2b57d44b55b6fe31c1a72d5981dd8a06e5e7f
    echo "Firewall Started"
     ;;
 
@@ -690,7 +1527,7 @@ case "$1" in
       echo -e "D.T Firewall $VER"
       echo "Restarting Firewall"
       sleep 2
-      echo "Flushing firewall..."
+      echo "Flushing Firewall..."
       sleep 1
      echo "Starting Firewall..."
      $SCRIPT start
