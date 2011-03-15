@@ -961,7 +961,7 @@ case "$1" in
 
     
 
-    # Max. 500/Seconds (5/Jiffie) send
+    # Max. 500/Seconds (5/Sec) send
 #    echo 5 > /proc/sys/net/ipv4/icmp_ratelimit
 
     # Memory Allocation and -Timing for IP-De/-Fragmenting
