@@ -1,3 +1,12 @@
 Dumb Terminal Firewall Script
 a simple to robust script to make using IPTables http://www.netfilter.org/projects/iptables/ easier.
 by: MikereDD & Veekahn
+
+Syntax Features:
+ start, stop, restart, save, restore, and status
+
+Extra Features:
+ Works with: SSGGuard, more to come...
+
+Features to Come:
+ Admin Tools: better logging and admin scripts-tools.
