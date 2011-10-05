@@ -176,13 +176,21 @@ VER="1.7beta7"
   DeF='\033[0m'
 ## end initializations 
 
-# Path to Script  - used for  `restart` 
-SCRIPT=/etc/rc.d/dtfirewall
+# Path to USR LOCAL Directory
+#  dtfirewall uses bin/ and etc/ directories in USR/ 
+# Default path is standard $USR/local path /usr/local
+USR=/usr/local
+
+# Default Path to dtfirewall script  - used to admin script 
+SCRIPT=$USR/bin/dtfirewall
 
 ## Specify where IP Tables is located 
+# Help to find iptables:
+#  Run command: which iptables
 # not necessary for: 
 #   archlinux, debian, redhat, centos 
-IPTABLES=''
+FINDIPTABLES=$(echo -e `which iptables`)
+IPTABLES='$FINDIPTABLES'
 
 # Path to iptables-save 
 IPTABLESSAVE=/usr/sbin/iptables-save
@@ -198,10 +206,10 @@ MODPROBE=/sbin/modprobe
 
 #
 ## List Locations
-WHITELIST=/usr/local/etc/dtfw_whitelist.txt
-BLACKLIST=/usr/local/etc/dtfw_blacklist.txt
-#OUT_WHITELIST=/usr/local/etc/whitelist.txt   # most likely not implemented
-OUT_BLACKLIST=/usr/local/etc/dtfw_blacklist_OUTS.txt   # not implemented - optional
+WHITELIST=$USR/etc/dtfw/dtfw_whitelist.txt
+BLACKLIST=$USR/etc/dtfw/dtfw_blacklist.txt
+#OUT_WHITELIST=$USR/etc/dtfw/dtfw_whitelist_OUTS.txt   # most likely not implemented
+OUT_BLACKLIST=$USR/etc/dtfw/dtfw_blacklist_OUTS.txt   # not implemented - optional
 
 # Server is behind a router or directly connected to the internet 
 #  deals directly with IPSpoofing and Broadcasts
