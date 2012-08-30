@@ -176,21 +176,13 @@ VER="1.7beta7"
   DeF='\033[0m'
 ## end initializations 
 
-# Path to USR LOCAL Directory
-#  dtfirewall uses bin/ and etc/ directories in USR/ 
-# Default path is standard $USR/local path /usr/local
-USR=/usr/local
-
-# Default Path to dtfirewall script  - used to admin script 
-SCRIPT=$USR/bin/dtfirewall
+# Path to Script  - used for  `restart` 
+SCRIPT=/usr/local/etc/DTfw/dtfw
 
 ## Specify where IP Tables is located 
-# Help to find iptables:
-#  Run command: which iptables
 # not necessary for: 
 #   archlinux, debian, redhat, centos 
-FINDIPTABLES=$(echo -e `which iptables`)
-IPTABLES='$FINDIPTABLES'
+IPTABLES='/usr/sbin/iptables'
 
 # Path to iptables-save 
 IPTABLESSAVE=/usr/sbin/iptables-save
@@ -206,10 +198,13 @@ MODPROBE=/sbin/modprobe
 
 #
 ## List Locations
-WHITELIST=$USR/etc/dtfw/dtfw_whitelist.txt
-BLACKLIST=$USR/etc/dtfw/dtfw_blacklist.txt
-#OUT_WHITELIST=$USR/etc/dtfw/dtfw_whitelist_OUTS.txt   # most likely not implemented
-OUT_BLACKLIST=$USR/etc/dtfw/dtfw_blacklist_OUTS.txt   # not implemented - optional
+WHITELIST=/usr/local/etc/DTfw/dtfw-lists/dtfw_whitelist.txt
+BLACKLIST=/usr/local/etc/DTfw/dtfw-lists/dtfw_blacklist.txt
+#OUT_WHITELIST=/usr/local/etc/DTfw/dtfw-lists/dtfw_whitelist_OUTS.txt   # most likely not implemented
+OUT_BLACKLIST=/usr/local/etc/DTfw/dtfw-lists/dtfw_blacklist_OUTS.txt   # not implemented - optional
+
+# DTfw DynamicHosts script
+DYNHOSTSCRIPT=/usr/local/etc/DTfw/dtfw_dynamichosts.sh
 
 # Server is behind a router or directly connected to the internet 
 #  deals directly with IPSpoofing and Broadcasts
@@ -219,7 +214,7 @@ OUT_BLACKLIST=$USR/etc/dtfw/dtfw_blacklist_OUTS.txt   # not implemented - option
 IFACES+=("WAN" "eth0") # drops
 IFACES+=("LAN" "eth0")
 IFACES+=("LAN" "eth1") # dhcp
-IFACES+=("WAN" "130.157.32.0")
+IFACES+=("WAN" "10.0.0.1")
 IFACES+=("WAN" "eth1") # drops
 #IFACES+=("WAN" "130.157.0.0")
 IFACES+=("LAN" "eth1:0")
@@ -297,7 +292,7 @@ SPOOF_IPS+=("0.0.0.0/8")
 SPOOF_IPS+=("10.0.0.0/8")
 SPOOF_IPS+=("127.0.0.0/8")
 SPOOF_IPS+=("169.254.0.0/16")
-SPOOF_IPS+=("172.16.0.0/12")
+#SPOOF_IPS+=("172.16.0.0/12")
 SPOOF_IPS+=("192.168.0.0/16")
 SPOOF_IPS+=("224.0.0.0/4")
 SPOOF_IPS+=("239.255.255.0/24")
@@ -313,7 +308,8 @@ SPOOF_IPS+=("255.255.255.255")
 # Block Brute Force Ports + Names
 #BruteForce+=("port:(s)" "description")
 BruteForce+=("21:22" "FTP:SSH")
-BruteForce+=("41331" "webmin")
+#BruteForce+=("59090" "sabnzbd")
+#BruteForce+=("41331" "webmin")
 
 # Other flood protections [limit rate in FORWARD] - prevent DoS 
 #   http://netfilter.org/documentation/HOWTO/packet-filtering-HOWTO-7.html
@@ -338,50 +334,55 @@ UseSSHGuard="true"
 SSHG_TableName="sshguard"
 # Specify parameters for SSH guard, and any additional IPTABLES syntaxed parameters
 sshguard_params="-p tcp --dport 22"
-sshguard_moreps="! -s 130.157.33.0/24"
+sshguard_moreps="! -s 10.0.0.1/24"
 
 
 # Allow inbound Samba/HTPC from specific ip/subnet
 #SAMBA+=("ip" "ip/cidr")
-SAMBA+=("192.168.1.0/24")
+SAMBA+=("10.0.0.3/24")
 
 
 
 ### General Services (specific destination port)
 ##  PD_SRV+=( "<DESC>" "<tcp|udp|both>" "<PORT|all>" )
-PD_SRV+=("HTTP" "tcp" "8080")
+#PD_SRV+=("HTTP" "tcp" "8181")
 #PD_SRV+=("HTTPS" "tcp" "443")
-PD_SRV+=("SSH" "tcp" "443")
-PD_SRV+=("SMPT" "tcp" "25")
-PD_SRV+=("SMPTS" "tcp" "465")
-PD_SRV+=("IRC" "both" "6667:6669")
-PD_SRV+=("torrent" "tcp" "57070:57076")
-PD_SRV+=("KDX" "tcp" "666")
+PD_SRV+=("SSH" "tcp" "22")
+#PD_SRV+=("SMPT" "tcp" "25")
+#PD_SRV+=("SMPTS" "tcp" "465")
+PD_SRV+=("FTP" "tcp" "21")
+PD_SRV+=("FTP Two" "tcp" "21")
+PD_SRV+=("FTP Passive" "tcp" "2456:2465")
+#PD_SRV+=("IRC" "both" "6667:6669")
+#PD_SRV+=("TELNET" "both" "41836:41838")
+#PD_SRV+=("torrent" "tcp" "64840:64850")
+#PD_SRV+=("KDX" "tcp" "666")
 #PD_SRV=("test PD" "both" "0")
 #PD_SRV=("test PD" "ipv6-icmp" "any")
 #PD_SRV=("test PD" "any" "all")
+PD_SRV=("synergy" "both" "24800")
 
 ### Specific Source IP, Dest Port
 ##  PID_SRV+=( "<DESC>" "<tcp|udp|both>" "<src ip>" "<dst port | all>"
-PID_SRV+=("http configs" "tcp" "192.168.1.0/24" "8079")
-PID_SRV+=("http configs" "tcp" "192.168.3.0/24" "8079")
-PID_SRV+=("http configs" "tcp" "172.16.88.0/24" "8079")
-PID_SRV+=("ssh gamebox" "tcp" "192.168.1.6/32" "22")
-PID_SRV+=( "SSH vmNat" "tcp" "172.16.88.0/24" "22" )
-PID_SRV+=("http configs mbp" "tcp" "172.16.88.0/24" "8079")
-PID_SRV+=("synergy" "tcp" "192.168.1.6/32" "24800")
-PID_SRV+=("synergy" "tcp" "192.168.1.41/32" "24800")
-PID_SRV+=("gamebox" "both" "192.168.1.6/32" "all")
-PID_SRV+=( "ssh scwa" "tcp" "75.26.142.246/32" "22" )
-PID_SRV+=( "ssh scwa" "tcp" "75.26.142.246/32" "443" )
+#PID_SRV+=("http configs" "tcp" "192.168.1.0/24" "8079")
+#PID_SRV+=("http configs" "tcp" "192.168.3.0/24" "8079")
+#PID_SRV+=("http configs" "tcp" "172.16.88.0/24" "8079")
+#PID_SRV+=("ssh gamebox" "tcp" "192.168.1.6/32" "22")
+#PID_SRV+=( "SSH vmNat" "tcp" "172.16.88.0/24" "22" )
+#PID_SRV+=("http configs mbp" "tcp" "172.16.88.0/24" "8079")
+PID_SRV+=("synergy" "tcp" "192.1.23.42/24" "24800")
+#PID_SRV+=("synergy" "tcp" "1.1.1.10/24" "24800")
+#PID_SRV+=("gamebox" "both" "192.168.1.6/32" "all")
+#PID_SRV+=( "ssh scwa" "tcp" "75.26.142.246/32" "22" )
+#PID_SRV+=( "ssh scwa" "tcp" "75.26.142.246/32" "443" )4183q
 #PID_SRV=("test PID" "ipv6-icmp" "any" "any")
 
 
 ### Specific Port Services (source and destination)
 ##  PSD_SRV+=( "<DESC>" "<tcp|udp|both>" "<Source PORT>" "<Destination PORT>")
-PSD_SRV+=( "TELNET bot1" "tcp" "31840:31848" "1843" )
-#PSD_SRV+=( "TELNET bot2" "tcp" "31840:31848" "1844" )
-PSD_SRV+=( "TELNET bot3" "tcp" "31840:31848" "1845" )
+#PSD_SRV+=( "TELNET bot1" "tcp" "41845:41895" "1836" )
+#PSD_SRV+=( "TELNET bot2" "tcp" "41845:41895" "1837" )
+#PSD_SRV+=( "TELNET bot3" "tcp" "41845:41895" "1838" )
 #PSD_SRV+=( "TELNET bot4" "tcp" "31840:31848" "1846" )
 #PSD_SRV=( "test PSD" "ipv6-icmp" "all" "any" )
 #PSD_SRV=( "test PSD" "tcp" "10" "20" )
@@ -392,12 +393,12 @@ PSD_SRV+=( "TELNET bot3" "tcp" "31840:31848" "1845" )
 #PISD_SRV+=( "TELNET bot5" "tcp" "127.0.0.1" "31840:31848" "1843" )
 #PISD_SRV+=( "TELNET bot6" "tcp" "127.0.0.1" "31840:31848" "1844" )
 #PISD_SRV+=( "TELNET bot7" "tcp" "127.0.0.1" "31840:31848" "1845" )
-PISD_SRV+=( "TELNET bot8" "tcp" "127.0.0.1" "31840:31848" "1846" )
-PISD_SRV+=( "Bnc" "tcp" "174.122.218.237" "52010:52021" "366" )
-PISD_SRV+=( "test PISD" "both" "! 126.0.0.1" "! 60" "! 40" )
-PISD_SRV+=( "test PISD" "tcp" "! 126.0.0.1" "! 60" " ! 40" )
-PISD_SRV+=( "test PISD" "ipv6-icmp" "! 126.0.0.1" "any" "any" )
-PISD_SRV+=( "test PISD" "any" "! 126.0.0.1" "any" "any" )
+#PISD_SRV+=( "TELNET bot8" "tcp" "127.0.0.1" "31840:31848" "1846" )
+#PISD_SRV+=( "Bnc" "tcp" "174.122.218.237" "52010:52021" "366" )
+#PISD_SRV+=( "test PISD" "both" "! 126.0.0.1" "! 60" "! 40" )
+#PISD_SRV+=( "test PISD" "tcp" "! 126.0.0.1" "! 60" " ! 40" )
+#PISD_SRV+=( "test PISD" "ipv6-icmp" "! 126.0.0.1" "any" "any" )
+#PISD_SRV+=( "test PISD" "any" "! 126.0.0.1" "any" "any" )
 
 
 
@@ -1052,9 +1053,8 @@ case "$1" in
     $IPTABLES -A $BRUTEF -j LOG --log-prefix "${LogPrefix}brute forcer "
     $IPTABLES -A $BRUTEF -j DROP
 
-
-
-
+    # Create Chain for Dymanic Hosts
+    $IPTABLES -N dtfwdynamichosts
 
 ####  TODO: make this work -  bw rates 
     BW_Rates="off"
@@ -1961,6 +1961,11 @@ case "$1" in
 
     $IPTABLES -t filter -D INPUT 1
 
+# Dynamic Hosts INPUT CHAIN
+    $IPTABLES -I INPUT 1 -j dtfwdynamichosts
+
+# Dynamic Hosts Flush chain
+    $IPTABLES -F dtfwdynamichosts
 
     BLchain="INPUT"
     if [[ "$FancyListsIN" == "true" || "$FancyListsIN" == "TRUE" ]]; then
@@ -2058,7 +2063,9 @@ case "$1" in
    InsertLayerRule "162" # output whitelist
    
 
-
+   # Torrent DHT lines to aid in tracking to help keep ratio's updated.
+   # $IPTABLES -t raw -I PREROUTING -p udp --dport $TORRENTPORT -j NOTRACK
+   # $IPTABLES -t raw -I OUTPUT -p udp --sport $TORRENTPORT -j NOTRACK
 
    # Log All Packets (inserted as first rule)
    if [[ "$LOG_ALL_PACKETS" == "true" || "$LOG_ALL_PACKETS" == "1" || "$LOG_ALL_PACKETS" == "yes" ]]; then
@@ -2114,17 +2121,21 @@ case "$1" in
     fi
     ### 
     # end Log Bogus and Last Line segment 
-   
 
+    # DTfw Dynamic Host
+    if [ -f $DYNHOSTSCRIPT ];then
+       echo " Adding Dynamic Hosts Support"
+       sh $DYNHOSTSCRIPT
+    else
+      echo " DTfw Dynamic Hosts script not in use."
+    fi
 
    # Default-Policies   
    $IPTABLES -P INPUT DROP
    $IPTABLES -P OUTPUT DROP
    $IPTABLES -P FORWARD DROP
-   
-   
-   
-   
+
+
    echo "Firewall Started"
 
    shopt -u nocasematch
@@ -2191,3 +2202,4 @@ case "$1" in
     ;;
 
 esac
+

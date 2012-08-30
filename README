@@ -1,4 +1,6 @@
-Dumb Terminal Firewall Script
+#Dumb Terminal Firewall Script
+DTfw - Firewall
+
 a simple to robust script to make using IPTables http://www.netfilter.org/projects/iptables/ easier.
 by: MikereDD & Veekahn
 
@@ -7,6 +9,11 @@ Syntax Features:
 
 Extra Features:
  Works with: SSHGuard, more to come...
+
+Dynamic Host Updater:
+Added a dynamic host updater script/module.
+Update 1 or several hostnames that use Dynamic DNS.
+Email localhost and or a non-local email address what hostname, old ip/new ip and time/date.
 
 Features to Come:
  Admin Tools: better logging and admin scripts-tools.
