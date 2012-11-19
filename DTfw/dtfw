@@ -1106,7 +1106,7 @@ case "$1" in
     InsertLayerRule "105"
     # connection tracking
     # related, or established, ACCEPT!
-    $IPTABLES -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT                -m comment --comment "connection tracking INPUT"
+    $IPTABLES -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT                -m comment --comment "connection tracking INPUT"
 
 
     InsertLayerRule "106"
@@ -1250,10 +1250,10 @@ case "$1" in
 ##    do
 ##      if (( $i % 2 == 0 )); then
 ##        $IPTABLES -A INPUT -p tcp --dport ${BruteForce[$i]} \
-##          -m state --state NEW -m recent --set --name "BF_${BruteForce[$((i+1))]}"  \
+##          -m conntrack --ctstate NEW -m recent --set --name "BF_${BruteForce[$((i+1))]}"  \
 ##          -m comment --comment "${BruteForce[$((i+1))]}"
 ##        $IPTABLES -A INPUT -p tcp --dport ${BruteForce[$i]} \
-##          -m state --state NEW -m recent --update --seconds 60 --hitcount 8 --rttl --name "BF_${BruteForce[$((i+1))]}" -j ${BRUTEF} \
+##          -m conntrack --ctstate NEW -m recent --update --seconds 60 --hitcount 8 --rttl --name "BF_${BruteForce[$((i+1))]}" -j ${BRUTEF} \
 ##          -m comment --comment "${BruteForce[$((i+1))]}"
 ##      fi
 ##    done      
@@ -1293,7 +1293,7 @@ case "$1" in
     OUT_NEW_DESC=()
     if [[ "$Block_Corrupt_Outbound" == "false" || "$Block_Corrupt_Outbound" == "0" || "$Block_Corrupt_Outbound" == "no" ]]; then
         # connection tracking
-        $IPTABLES -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT   -m comment --comment "connection tracking OUTPUT"
+        $IPTABLES -A OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT   -m comment --comment "connection tracking OUTPUT"
         OUT_BAD_PAC_DESC="corrupt packets OUTPUT"
         OUT_NEW_STATE="NEW"
         OUT_NEW_DESC="new connections OUTPUT"
@@ -1309,7 +1309,7 @@ case "$1" in
 
     InsertLayerRule "166"
     # Corrupt Packet drop
-    $IPTABLES -A OUTPUT -m state --state INVALID -j DROP            -m comment --comment "${OUT_BAD_PAC_DESC}"
+    $IPTABLES -A OUTPUT -m conntrack --ctstate INVALID -j DROP            -m comment --comment "${OUT_BAD_PAC_DESC}"
 
     InsertLayerRule "167" 
     # DROP/REJECT rules [TODO] - destination port blocking (source IP blocking) - iface? 
@@ -1317,7 +1317,7 @@ case "$1" in
 
     InsertLayerRule "168" # new+connection tracking - output
     # accept otherwise
-    $IPTABLES -A OUTPUT -m state --state ${OUT_NEW_STATE} -j ACCEPT -m comment --comment "${OUT_NEW_DESC}"   
+    $IPTABLES -A OUTPUT -m conntrack --ctstate ${OUT_NEW_STATE} -j ACCEPT -m comment --comment "${OUT_NEW_DESC}"   
     InsertLayerRule "169" # log bogus outward connections (last rule)
     ###
     # end OUTPUT section
@@ -1330,7 +1330,7 @@ case "$1" in
     InsertLayerRule "132"
     # connection tracking
     # related, or established, ACCEPT!
-    $IPTABLES -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT                 -m comment --comment "connection tracking FORWARD"
+    $IPTABLES -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT                 -m comment --comment "connection tracking FORWARD"
 
     InsertLayerRule "133"
     # Force ACCEPT Rules [TODO]
@@ -1339,7 +1339,7 @@ case "$1" in
     ### 
     InsertLayerRule "134"
     # Corrupt Packet drop 
-    $IPTABLES -A FORWARD -m state --state INVALID -j DROP   -m comment --comment "corrupt packets FORWARD"
+    $IPTABLES -A FORWARD -m conntrack --ctstate INVALID -j DROP   -m comment --comment "corrupt packets FORWARD"
     InsertLayerRule "135"
     # Stealth Scans etc. DROPpen
     # Non Flags 
@@ -1368,7 +1368,7 @@ case "$1" in
     # pettingers.org/code/firewall.html
     $IPTABLES -A FORWARD ! -i lo -p tcp -m tcp --tcp-flags FIN,SYN,RST,PSH,ACK,URG NONE -j $DropTableName -m comment --comment "from pettingers.org"
     # Force SYN packets check
-    $IPTABLES -A FORWARD -p tcp ! --syn -m state --state NEW -j $DropTableName  -m comment --comment "force SYN packets check"
+    $IPTABLES -A FORWARD -p tcp ! --syn -m conntrack --ctstate NEW -j $DropTableName  -m comment --comment "force SYN packets check"
     InsertLayerRule "136"
     # Force Fragments packets check
     $IPTABLES -A FORWARD -f -j $DropTableName   -m comment --comment "force fragment packet check"
@@ -1409,7 +1409,7 @@ case "$1" in
 
     InsertLayerRule "139"
     # allow FORWARD after all them bad packet checks
-    $IPTABLES -A FORWARD ! -i ppp0 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT   -m comment --comment "connection tracking FORWARD"
+    $IPTABLES -A FORWARD ! -i ppp0 -m conntrack --ctstate NEW,ESTABLISHED,RELATED -j ACCEPT   -m comment --comment "connection tracking FORWARD"
 
     InsertLayerRule "140" # log bogus forward connections (last rule)
     ###
@@ -1430,7 +1430,7 @@ case "$1" in
     fi
 
     # Corrupt Packet drop 
-    $IPTABLES -A $invalid_frag_chain -m state --state INVALID -j $DropTableName     -m comment --comment "invalid packets INPUT"
+    $IPTABLES -A $invalid_frag_chain -m conntrack --ctstate INVALID -j $DropTableName     -m comment --comment "invalid packets INPUT"
     # Force Fragments packets check
     $IPTABLES -A $invalid_frag_chain -f -j $DropTableName     -m comment --comment "force fragment packet check"
 
@@ -1468,7 +1468,7 @@ case "$1" in
     # pettingers.org/code/firewall.html
     $IPTABLES -A $uncleanChainIN ! -i lo -p tcp -m tcp --tcp-flags FIN,SYN,RST,PSH,ACK,URG NONE -j $DropTableName -m comment --comment "from pettingers.org"
     # Force SYN packets check
-    $IPTABLES -A $uncleanChainIN -p tcp ! --syn -m state --state NEW -j $DropTableName   -m comment --comment "force SYN packets check"
+    $IPTABLES -A $uncleanChainIN -p tcp ! --syn -m conntrack --ctstate NEW -j $DropTableName   -m comment --comment "force SYN packets check"
     ###
     # end unclean data - INPUT chain
 
@@ -1579,10 +1579,10 @@ case "$1" in
     do
       if (( $i % 2 == 0 )); then
         $IPTABLES -A ${BF_chain} -p tcp --dport ${BruteForce[$i]} \
-          -m state --state NEW -m recent --set --name "BF_${BruteForce[$((i+1))]}"  \
+          -m conntrack --ctstate NEW -m recent --set --name "BF_${BruteForce[$((i+1))]}"  \
           -m comment --comment "${BruteForce[$((i+1))]}"
         $IPTABLES -A ${BF_chain} -p tcp --dport ${BruteForce[$i]} \
-          -m state --state NEW -m recent --update --seconds 60 --hitcount 8 --rttl --name "BF_${BruteForce[$((i+1))]}" -j ${BRUTEF} \
+          -m conntrack --ctstate NEW -m recent --update --seconds 60 --hitcount 8 --rttl --name "BF_${BruteForce[$((i+1))]}" -j ${BRUTEF} \
           -m comment --comment "${BruteForce[$((i+1))]}"
       fi
     done
@@ -1630,7 +1630,7 @@ case "$1" in
             elif [[ "${proto}" == "udp" ]]; then
                 proto="udp"
             elif [[ "${proto}" == "both" ]]; then
-                $IPTABLES -t filter -A ${SRV_chain} -m state --state NEW -p tcp      ${dport} -j ACCEPT -m comment --comment "${PD_SRV[$i]} tcp"
+                $IPTABLES -t filter -A ${SRV_chain} -m conntrack --ctstate NEW -p tcp      ${dport} -j ACCEPT -m comment --comment "${PD_SRV[$i]} tcp"
                 proto="udp"
             else
                 if [[ "${Show_Protocol_Warning}" == "true" ]]; then
@@ -1648,7 +1648,7 @@ case "$1" in
         fi
                     
 
-        $IPTABLES   -t filter -A ${SRV_chain} -m state --state NEW -p ${proto} ${dport} -j ACCEPT -m comment --comment "${PD_SRV[$i]} ${proto}"
+        $IPTABLES   -t filter -A ${SRV_chain} -m conntrack --ctstate NEW -p ${proto} ${dport} -j ACCEPT -m comment --comment "${PD_SRV[$i]} ${proto}"
 
 ## unset array (leaves empty item)        
         unset PD_SRV[$i]
@@ -1703,7 +1703,7 @@ case "$1" in
             elif [[ "${proto}" == "udp" ]]; then
                 proto="udp"
             elif [[ "${proto}" == "both" ]]; then
-                $IPTABLES -t filter -A ${SRV_chain} -m state --state NEW ${srcIP} -p tcp \
+                $IPTABLES -t filter -A ${SRV_chain} -m conntrack --ctstate NEW ${srcIP} -p tcp \
                     ${dport} -j ACCEPT -m comment --comment "${PID_SRV[$i]} tcp"
                 proto="udp"
             else
@@ -1720,7 +1720,7 @@ case "$1" in
             fi
         fi
         
-        $IPTABLES   -t filter -A ${SRV_chain} -m state --state NEW ${srcIP} -p ${proto} \
+        $IPTABLES   -t filter -A ${SRV_chain} -m conntrack --ctstate NEW ${srcIP} -p ${proto} \
             ${dport} -j ACCEPT -m comment --comment "${PID_SRV[$i]} ${proto}"
 
 ## unset array (leaves empty item)        
@@ -1778,7 +1778,7 @@ case "$1" in
             elif [[ "${proto}" == "udp" ]]; then
                 proto="udp"
             elif [[ "${proto}" == "both" ]]; then
-                $IPTABLES -t filter -A  -m state --state NEW -p tcp      ${sport} ${dport} \
+                $IPTABLES -t filter -A  -m conntrack --ctstate NEW -p tcp      ${sport} ${dport} \
                     -j ACCEPT -m comment --comment "${PSD_SRV[$i]} tcp"
                 proto="udp"
             else
@@ -1798,7 +1798,7 @@ case "$1" in
                 echo -e "${ReD} Unable to assign a port to ${GrN} any ${ReD}or${GrN} all ${ReD}protocols.${DeF}"
             fi
         fi
-        $IPTABLES   -t filter -A ${SRV_chain} -m state --state NEW -p ${proto} ${sport} ${dport} \
+        $IPTABLES   -t filter -A ${SRV_chain} -m conntrack --ctstate NEW -p ${proto} ${sport} ${dport} \
             -j ACCEPT -m comment --comment "${PSD_SRV[$i]} ${proto}"
 
 ## unset array (leaves empty item)        
@@ -1870,7 +1870,7 @@ case "$1" in
             elif [[ "${proto}" == "udp" ]]; then
                 proto="udp"
             elif [[ "${proto}" == "both" ]]; then
-                $IPTABLES -t filter -A ${SRV_chain} -m state --state NEW ${srcIP} -p tcp \
+                $IPTABLES -t filter -A ${SRV_chain} -m conntrack --ctstate NEW ${srcIP} -p tcp \
                     ${sport} ${dport} -j ACCEPT  -m comment --comment "${PISD_SRV[$i]} tcp"
                 proto="udp"
             else
@@ -1891,7 +1891,7 @@ case "$1" in
             fi
         fi
         
-        $IPTABLES   -t filter -A ${SRV_chain} -m state --state NEW ${srcIP} -p ${proto} \
+        $IPTABLES   -t filter -A ${SRV_chain} -m conntrack --ctstate NEW ${srcIP} -p ${proto} \
             ${sport} ${dport} -j ACCEPT  -m comment --comment "${PISD_SRV[$i]} ${proto}"
 
 
@@ -1923,14 +1923,14 @@ case "$1" in
     do
       $IPTABLES -A ${SMB_chain} -p udp -m udp -s ${SAMBA[$i]} --dport 137 -j ACCEPT   -m comment --comment "SAMBA $((i+1))"
       $IPTABLES -A ${SMB_chain} -p udp -m udp -s ${SAMBA[$i]} --dport 138 -j ACCEPT   -m comment --comment "SAMBA $((i+1))"
-      $IPTABLES -A ${SMB_chain} -m state --state NEW -m tcp -p tcp -s ${SAMBA[$i]} --dport 139 -j ACCEPT   -m comment --comment "SAMBA $((i+1))"
-      $IPTABLES -A ${SMB_chain} -m state --state NEW -m tcp -p tcp -s ${SAMBA[$i]} --dport 445 -j ACCEPT   -m comment --comment "SAMBA $((i+1))"
+      $IPTABLES -A ${SMB_chain} -m conntrack --ctstate NEW -m tcp -p tcp -s ${SAMBA[$i]} --dport 139 -j ACCEPT   -m comment --comment "SAMBA $((i+1))"
+      $IPTABLES -A ${SMB_chain} -m conntrack --ctstate NEW -m tcp -p tcp -s ${SAMBA[$i]} --dport 445 -j ACCEPT   -m comment --comment "SAMBA $((i+1))"
     done
         # All IPs
     #     $IPTABLES -A INPUT -p udp -m udp --dport 137 -j ACCEPT
     #     $IPTABLES -A INPUT -p udp -m udp --dport 138 -j ACCEPT
-    #     $IPTABLES -A INPUT -m state --state NEW -m tcp -p tcp --dport 139 -j ACCEPT
-    #     $IPTABLES -A INPUT -m state --state NEW -m tcp -p tcp --dport 445 -j ACCEPT
+    #     $IPTABLES -A INPUT -m conntrack --ctstate NEW -m tcp -p tcp --dport 139 -j ACCEPT
+    #     $IPTABLES -A INPUT -m conntrack --ctstate NEW -m tcp -p tcp --dport 445 -j ACCEPT
 
 
 
