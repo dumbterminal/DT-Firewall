@@ -48,7 +48,11 @@
 #       mangle - PreRouting 201-219  Input 221-239  FORWARD 241-259  OUTPUT 261-279  PostRouting 281-299
 #       nat    - PreRouting 301-329  POSTROUTING 331-359  OUTPUT 361-389
 #
-VER="1.8beta1"
+VER="1.9beta1"
+# Multiple Dynamic DNS Support
+# Clean up some code
+# TODO: Clean the code completely
+#VER="1.8beta1"
 # Dynamic DNS support
 #  Adding Dynamic DNS host support to enable remote access.
 #     => runs a check on dns every 15 mins and flushes DYNAMIC rule if IP has changed.
@@ -202,14 +206,15 @@ FWSAVE=/etc/iptables/iptables.rules
 MODPROBE=/sbin/modprobe
 
 ## List Locations
-WHITELIST=/usr/local/etc/DTfw/dtfw-lists/dtfw_whitelist.txt
-BLACKLIST=/usr/local/etc/DTfw/dtfw-lists/dtfw_blacklist.txt
-#OUT_WHITELIST=/usr/local/etc/DTfw/dtfw-lists/dtfw_whitelist_OUTS.txt   # most likely not implemented
-OUT_BLACKLIST=/usr/local/etc/DTfw/dtfw-lists/dtfw_blacklist_OUTS.txt   # not implemented - optional
+WHITELIST=/usr/local/etc/DTfw/dtfw-lists/dtfw_whitelist.lst
+BLACKLIST=/usr/local/etc/DTfw/dtfw-lists/dtfw_blacklist.lst
+#OUT_WHITELIST=/usr/local/etc/DTfw/dtfw-lists/dtfw_whitelist_OUTS.lst   # most likely not implemented
+OUT_BLACKLIST=/usr/local/etc/DTfw/dtfw-lists/dtfw_blacklist_OUTS.lst   # not implemented - optional
 
 # DTfw DynamicHosts script - single IP
 # working on Mulitple Dynamic IP list
 DYNHOSTSCRIPT=/usr/local/etc/DTfw/dtfw_dynamichosts.sh
+DYNDNSWHITELIST=/usr/local/etc/DTfw/dtfw_dynamiclists/dtfw_dynamic_whitelist.lst
 
 # Server is behind a router or directly connected to the internet 
 #  deals directly with IPSpoofing and Broadcasts
@@ -1117,7 +1122,7 @@ case "$1" in
     InsertLayerRule "105"
     # connection tracking
     # related, or established, ACCEPT!
-    $IPTABLES -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT                -m comment --comment "connection tracking INPUT"
+    $IPTABLES -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT -m comment --comment "connection tracking INPUT"
 
 
     InsertLayerRule "106"
@@ -1304,7 +1309,7 @@ case "$1" in
     OUT_NEW_DESC=()
     if [[ "$Block_Corrupt_Outbound" == "false" || "$Block_Corrupt_Outbound" == "0" || "$Block_Corrupt_Outbound" == "no" ]]; then
         # connection tracking
-        $IPTABLES -A OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT   -m comment --comment "connection tracking OUTPUT"
+        $IPTABLES -A OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT -m comment --comment "connection tracking OUTPUT"
         OUT_BAD_PAC_DESC="corrupt packets OUTPUT"
         OUT_NEW_STATE="NEW"
         OUT_NEW_DESC="new connections OUTPUT"
@@ -1320,7 +1325,7 @@ case "$1" in
 
     InsertLayerRule "166"
     # Corrupt Packet drop
-    $IPTABLES -A OUTPUT -m conntrack --ctstate INVALID -j DROP            -m comment --comment "${OUT_BAD_PAC_DESC}"
+    $IPTABLES -A OUTPUT -m conntrack --ctstate INVALID -j DROP -m comment --comment "${OUT_BAD_PAC_DESC}"
 
     InsertLayerRule "167" 
     # DROP/REJECT rules [TODO] - destination port blocking (source IP blocking) - iface?
@@ -1341,7 +1346,7 @@ case "$1" in
     InsertLayerRule "132"
     # connection tracking
     # related, or established, ACCEPT!
-    $IPTABLES -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT                 -m comment --comment "connection tracking FORWARD"
+    $IPTABLES -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT -m comment --comment "connection tracking FORWARD"
 
     InsertLayerRule "133"
     # Force ACCEPT Rules [TODO]
@@ -2010,7 +2015,7 @@ case "$1" in
            ws=${whiteSpace:0:20-szip}
            echo "    $bl: ${bip}${ws}$comment"
            ##printf "    %s: ${bip}${ws}$comment"
-           $IPTABLES -I ${BLchain} ${bl} -t filter -s $bip -j ACCEPT   -m comment --comment "Blacklist ${bl} ${comment}"
+           $IPTABLES -I ${BLchain} ${bl} -t filter -s $bip -j DROP   -m comment --comment "Blacklist ${bl} ${comment}"
            bl=$((bl+1));
         done
    fi
@@ -2034,7 +2039,7 @@ case "$1" in
     if [[ "$FancyListsIN" == "true" ]]; then
         WLchain="WhiteListIN"
         $IPTABLES -N $WLchain
-        $IPTABLES -I INPUT 1 -j ${WLchain}     -m comment --comment "WhiteList Chain"
+        $IPTABLES -I INPUT 1 -j ${WLchain} -m comment --comment "WhiteList Chain"
     fi
 
    ### Whitelist
@@ -2134,11 +2139,47 @@ case "$1" in
 
     # DTfw Dynamic Host
     if [ -f $DYNHOSTSCRIPT ];then
-       echo " Adding Dynamic Hosts Support"
+       echo " Converting Host names to IPs"
        sh $DYNHOSTSCRIPT
     else
       echo " DTfw Dynamic Hosts script not in use."
     fi
+
+
+    WLchain="INPUT"
+    if [[ "$FancyListsIN" == "true" ]]; then
+        WLchain="DynDnsWhiteListIN"
+        $IPTABLES -N $WLchain
+        $IPTABLES -I INPUT 1 -j ${WLchain} -m comment --comment "DynDnsWhiteList Chain"
+    fi
+
+   ### DynDnsWhitelist
+   #
+   ### find . -type f | grep -s ".*\.sh$" | while read a; do chmod +x "$a"; done
+   if [ ! -r "$DYNDNSWHITELIST" ]; then
+     echo -e "${ReD}cannot read Whitelist at \"${DYNDNSWHITELIST}\", allowing ALL traffic!${DeF}"
+     $IPTABLES -I INPUT 1 -j ACCEPT -m comment --comment "dyndns whitelist error, allowing all"
+     $IPTABLES -I FORWARD 1 -j ACCEPT -m comment --comment "dyndns whitelist error, allowing all"
+     $IPTABLES -I OUTPUT 1 -j ACCEPT -m comment --comment "dyndns whitelist error, allowing all"
+   else
+       wl=1;
+       whiteSpace="         "
+       grep -v "^#" $DYNDNSWHITELIST | grep -v "^$" | while read a; do
+           if [ "$wl" == "1" ]; then  echo " Permitting DynDns Whitelisted IPs:"; fi
+           sz=${#a}
+           wip=`echo $a | awk '{print $1}'`
+           szip=${#wip}
+           comment=`echo ${a:szip} | sed 's/ *$//g'`
+           ws=${whiteSpace:0:20-szip}
+           echo "    $wl: ${wip}${ws}$comment"
+           $IPTABLES -I ${WLchain} ${wl} -t filter -s $wip -j ACCEPT -m comment --comment "dyndns whitelist ${wl} ${comment}"
+           wl=$((wl+1));
+       done
+
+   fi
+   InsertLayerRule "100" # input  whitelist
+   InsertLayerRule "160" # output whitelist
+
 
    # Default-Policies
    $IPTABLES -P INPUT DROP

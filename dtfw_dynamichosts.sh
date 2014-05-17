@@ -1,14 +1,14 @@
-#!/bin/bash -
+#!/bin/bash - 
 #===============================================================================
 #
 #          FILE: dtfw_dynamichosts.sh
-#
-#         USAGE: ./dtfw_dynamichosts.sh
-#
+# 
+#         USAGE: ./dtfw_dynamichosts.sh 
+# 
 #   DESCRIPTION: Dumb Terminals plug-in script to help handle Dynamic DNS, to ease
 #                  remote access for ever changing IP's with the firewall.
 #       OPTIONS: ---
-#  REQUIREMENTS: IPTables and DTfw script.
+#  REQUIREMENTS: IPTables and DTfw script. 
 #          BUGS: ---
 #         NOTES: ---
 #        AUTHOR: Mike Redd (MikereDD), mredd@0tue0.com
@@ -29,64 +29,81 @@ VER="0.1b"
 # /sbin/iptables -F dtfwdynamichosts
 
 
-HOST=$1
-HOSTFILE="/usr/local/etc/DTfw/dtfw_dynamichosts/host-$HOST"
-CHAIN="dtfwdynamichosts"  # change this to whatever chain you want.
-IPTABLES='/usr/sbin/iptables'
-DYNAMICDNSLIST="/usr/local/etc/DTfw/dtfw_dynamiclists/dtfw_dynamichosts.lst"
-DYNAMICDNSLISTTMP="/usr/local/etc/DTfw/dtfw_dynamiclists/dtfw_dynamichoststmp.lst"
+DYNDNSHOSTLIST="/usr/local/etc/DTfw/dtfw_dynamiclists/dtfw_dynamic_hosts.lst"
+DYNDNSWHITELIST="/usr/local/etc/DTfw/dtfw_dynamiclists/dtfw_dynamic_whitelist.lst"
 
-if [ -f "$DYNAMICDNSLIST" ];then
-    echo "############################################"
-    echo -e " DTfw Dynamic Hosts ver.$VER"
-    echo -e " running on server: $HOSTNAME"
-    echo -e " Date/Time: $(date)"
-    echo " Found dtfw_dynamichosts list... using list"
-    echo "############################################"
-    HOST=$(cat $DYNAMICDNSLIST)
-# check to make sure we have enough args passed.
-elif [ "${#@}" -ne "1" ]; then
-    echo "$0 hostname"
-    echo " You must supply a hostname to update in iptables."
-    exit
-fi
+echo -e "Cleaning DynDns Whitelist"
+echo "" > $DYNDNSWHITELIST
 
-# lookup host name from dns tables
-IP=`/usr/bin/dig +short $HOST | /usr/bin/tail -n 1`
-if [ "${#IP}" = "0" ]; then
-    echo " Couldn't lookup hostname for $HOST, failed."
-    exit
-fi
+while read line
+do
+    echo -e "Converting Host names to IPs"
+    echo -e "$(dig +short $line >> $DYNDNSWHITELIST)" ;
+done < $DYNDNSHOSTLIST;
 
-OLDIP=""
-if [ -a $HOSTFILE ]; then
-    OLDIP=`cat $HOSTFILE`
-    # echo "CAT returned: $?"
-fi
- 
-# has address changed?
-if [ "$OLDIP" == "$IP" ]; then
-    echo "############################################"
-    echo " Old and new IP addresses match."
-    echo -e " DTfw Dynamic Hosts ver.$VER"
-    echo -e " $HOST - $OLDIP"
-    echo "############################################"
-    exit
-fi
+echo -e "$(sed '1d' -i $DYNDNSWHITELIST)"
+echo -e "DynDns Whitelist ready"
+
+
+##################### OLD ####################################################
+#HOST=$1
+#HOSTFILE="/usr/local/etc/DTfw/dtfw_dynamichosts/host-$HOST"
+#CHAIN="dtfwdynamichosts"  # change this to whatever chain you want.
+#IPTABLES='/usr/sbin/iptables'
+#DYNAMICDNSLIST="/usr/local/etc/DTfw/dtfw_dynamiclists/dtfw_dynamic_hosts.lst"
+#DYNAMICDNSLISTTMP="/usr/local/etc/DTfw/dtfw_dynamiclists/dtfw_dyndns_tmp.lst"
+
+#if [ -f "$DYNAMICDNSLIST" ];then
+#    echo "############################################"
+#    echo -e " DTfw Dynamic Hosts ver.$VER"
+#    echo -e " running on server: $HOSTNAME"
+#    echo -e " Date/Time: $(date)"
+#    echo " Found dtfw_dynamichosts list... using list"
+#    echo "############################################"
+#    HOST=$(cat $DYNAMICDNSLIST)
+## check to make sure we have enough args passed.
+#elif [ "${#@}" -ne "1" ]; then
+#    echo "$0 hostname"
+#    echo " You must supply a hostname to update in iptables."
+#    exit
+#fi
+
+## lookup host name from dns tables
+#IP=`/usr/bin/dig +short $HOST | /usr/bin/tail -n 1`
+#if [ "${#IP}" = "0" ]; then
+#    echo " Couldn't lookup hostname for $HOST, failed."
+#    exit
+#fi
+
+#OLDIP=""
+#if [ -a $HOSTFILE ]; then
+#    OLDIP=`cat $HOSTFILE`
+#    # echo "CAT returned: $?"
+#fi
+# 
+## has address changed?
+#if [ "$OLDIP" == "$IP" ]; then
+#    echo "############################################"
+#    echo " Old and new IP addresses match."
+#    echo -e " DTfw Dynamic Hosts ver.$VER"
+#    echo -e " $HOST - $OLDIP"
+#    echo "############################################"
+#    exit
+#fi
  
 # save of new ip.
-echo $IP>$HOSTFILE
-echo "############################################"
-echo -e " DTfw Dynamic Hosts ver.$VER"
-echo " Updating $HOST in iptables."
-echo -e " $HOST - $IP"
-echo "############################################"
-if [ "${#OLDIP}" != "0" ]; then
-    echo "Removing old rule ($OLDIP)"
-    `$IPTABLES -D $CHAIN -s $OLDIP/32 -j ACCEPT`
-fi
-echo "Inserting new rule ($IP)"
-`$IPTABLES -A $CHAIN -s $IP/32 -j ACCEPT`
+#echo $IP>$HOSTFILE
+#echo "############################################"
+#echo -e " DTfw Dynamic Hosts ver.$VER"
+#echo " Updating $HOST in iptables."
+#echo -e " $HOST - $IP"
+#echo "############################################"
+#if [ "${#OLDIP}" != "0" ]; then
+#    echo "Removing old rule ($OLDIP)"
+#    `$IPTABLES -D $CHAIN -s $OLDIP/32 -j ACCEPT`
+#fi
+#echo "Inserting new rule ($IP)"
+#`$IPTABLES -A $CHAIN -s $IP/32 -j ACCEPT`
 
 #   if [ ! -r "$DYNAMICDNSLIST" ]; then
 #     echo -e "${ReD}cannot read DynamicHostlist at \"${DYNAMICDNSLIST}\", allowing ALL traffic!${DeF}"
