@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Dumb Terminal IPTables Firewall Script
-#  script to aid the use of IPTables - http://www.netfilter.org/projects/iptables/index.html 
+#  script to aid the use of IPTables - http://www.netfilter.org/projects/iptables/index.html
 #   more aid from: http://pikt.org/pikt/samples/iptables_tcp_flags_programs.cfg.html
 #                  http://pettingers.org/code/firewall.html
 #                  http://www.newartisans.com/2007/09/neat-tricks-with-iptables.html
@@ -15,7 +15,7 @@
 # Git Repo: https://github.com/dumbterminal/
 # By: MikereDD & veekahn
 # email: dumbterminal -at- tehspork.com
-## 
+##
 # Much Thanx to Veekahn
 #  for helping with specific IP lines. :)
 #
@@ -25,7 +25,7 @@
 #
 ## 'TODO' (among the objects listed in the "iptables output order"
 #  Layer 107 - Allow Local host  -  remove ?
-#        108, is `allow lo iface` necessary ? 
+#        108, is `allow lo iface` necessary ?
 #  Layer 112, find out more info
 #   _SRV first parameter: allow vs drop vs (maybe reject-with -code is ugly)
 #
@@ -35,7 +35,7 @@
 #  make Restart do what it says it's doing
 #  kernel firewall WARNING logging (log level 4 -default)
 #  SCRIPT=  (change it to dt.firewall ?)
-#  SPOOF_IPS (on WAN only), WAN vs LAN auto detection per iface - reseach -s and -d spoofed ips 
+#  SPOOF_IPS (on WAN only), WAN vs LAN auto detection per iface - reseach -s and -d spoofed ips
 #  LogAllValidPackets - input, forward, output
 #   allow "BOTH" (all|any?) option for Proto in InsertLayerRule
 #   implement iface parameter for InsertLayerRule
@@ -48,7 +48,12 @@
 #       mangle - PreRouting 201-219  Input 221-239  FORWARD 241-259  OUTPUT 261-279  PostRouting 281-299
 #       nat    - PreRouting 301-329  POSTROUTING 331-359  OUTPUT 361-389
 #
-VER="1.7beta7"
+VER="1.8beta1"
+# Dynamic DNS support
+#  Adding Dynamic DNS host support to enable remote access.
+#     => runs a check on dns every 15 mins and flushes DYNAMIC rule if IP has changed.
+#  TODO: Starting with single DNS host and will convert to using a list.
+#VER="1.7beta7"
 # swapped LayerRule 105 and 106
 #  TODO: should Connection Tracking be above White+Black lists?
 #     => if so, refresh blacklist function to initiate tcp-rst+fin packets to new Blacklisted IPs
@@ -99,59 +104,59 @@ VER="1.7beta7"
 
 
 # iptables output order/levels
-# INPUT: InsertLayerRule 
-# 1  101 LogAllPackets_INPUT (optional) 
-# 1  102 whitelist 
-# 1  103 sshguard 
-# 1  104 blacklist 
-# A  105 connection tracking: ESTABLISHED,RELATED 
-# A  106 block spoofing (for WAN use only!) [TODO: auto-detection] 
+# INPUT: InsertLayerRule
+# 1  101 LogAllPackets_INPUT (optional)
+# 1  102 whitelist
+# 1  103 sshguard
+# 1  104 blacklist
+# A  105 connection tracking: ESTABLISHED,RELATED
+# A  106 block spoofing (for WAN use only!) [TODO: auto-detection]
 # A ?107 allow localhost [ LAN only? - what is source of this? allows SPOOFING ]
-# A ?108 allow lo iface 
+# A ?108 allow lo iface
 # A  109 check for INVALID or Fragment packets
 # A  110 bad packet/(scan?) checks
 # A  111 [NUKED for time being]
-## A  109 drop corrupt packets 
-## A  110 bad packets/scans 
+## A  109 drop corrupt packets
+## A  110 bad packets/scans
 ## A  111 force fragment packet check
-# A ?112 special port 111, 113, 520 cases 
-# A  113 icmp ping allow/deny/limit 
+# A ?112 special port 111, 113, 520 cases
+# A  113 icmp ping allow/deny/limit
 # A  114 other flood protections - FORWARDing limits - TODO
-# A  115 block brute force 
-# A  116 good-packet ACCEPT - allows: 
-#      - General Services (specific destination port) 
-#      - Specific Port Services (source and destination) 
-#      - Specific Source IP:Port, Dest Port 
-#      - Specific Source IP, Dest Port 
-# A  117 samba [enabled for spceified ip/subnet] 
+# A  115 block brute force
+# A  116 good-packet ACCEPT - allows:
+#      - General Services (specific destination port)
+#      - Specific Port Services (source and destination)
+#      - Specific Source IP:Port, Dest Port
+#      - Specific Source IP, Dest Port
+# A  117 samba [enabled for spceified ip/subnet]
 ##   118  spoof-part 2 (lan vs wan) - mDNS (224.0.0.251:5353 + other options)
 #       mDNS / IPP
 #       other 224/225 services
-# A  119 reject/drop logging (last rule) 
-# FORWARD: 
-# 1  131 LogAllPackets_FORWARD (optional) 
-# A  132 connection tracking: ESTABLISHED,RELATED 
-# A  133 force ACCEPT rules [TODO] 
-# A  134 drop corrupt packets 
+# A  119 reject/drop logging (last rule)
+# FORWARD:
+# 1  131 LogAllPackets_FORWARD (optional)
+# A  132 connection tracking: ESTABLISHED,RELATED
+# A  133 force ACCEPT rules [TODO]
+# A  134 drop corrupt packets
 # A  135 bad packets/scans  # [ do these need to exist ?? ]
 # A  136 force fragment packet check
 # A  137 Flood Protection - limit DoS
-# A  138 good-packet ACCEPT rules [TODO] - destinations! 
-# A  139 if not ppp0 then allow: NEW,ESTABLISHED,RELATED 
-# A  140 reject/drop logging (last rule) 
-# OUTPUT: 
-# 1  161 LogAllPackets_OUTPUT (optional) 
-# 1  162 WHITELIST ( load INPUT whitelist, load second file, load array ) not_TODO 
-# 1  163 BLACKLIST ( load second file, load array ) TODO (optional) 
-# A  164 connection tracking: ESTABLISHED,RELATED [disabled on force outbound corrupt packet check] 
+# A  138 good-packet ACCEPT rules [TODO] - destinations!
+# A  139 if not ppp0 then allow: NEW,ESTABLISHED,RELATED
+# A  140 reject/drop logging (last rule)
+# OUTPUT:
+# 1  161 LogAllPackets_OUTPUT (optional)
+# 1  162 WHITELIST ( load INPUT whitelist, load second file, load array ) not_TODO
+# 1  163 BLACKLIST ( load second file, load array ) TODO (optional)
+# A  164 connection tracking: ESTABLISHED,RELATED [disabled on force outbound corrupt packet check]
 # A  165 accept lo iface OUTPUT
-# A  166 drop corrupt packets 
-# A  167 DROP/REJECT rules [TODO] - destination port blocking (source IP blocking) - iface? 
-# A  168 new+connection tracking: NEW,ESTABLISHED,RELATED 
-# A  169 reject/drop logging (last rule) 
+# A  166 drop corrupt packets
+# A  167 DROP/REJECT rules [TODO] - destination port blocking (source IP blocking) - iface?
+# A  168 new+connection tracking: NEW,ESTABLISHED,RELATED
+# A  169 reject/drop logging (last rule)
 
 
-## list initializations, don't edit! 
+## list initializations, don't edit!
   SAMBA=( )
   SPOOF_IPS=( )
   Block_Ping=( )
@@ -159,12 +164,12 @@ VER="1.7beta7"
   sshguard_moreps=( )
   OTHER_FLOODS=( )
   BruteForce=( )
-  IFACES=( ) 
-  PD_SRV=( )    # Proto,  Dest port 
-  PID_SRV=( )   # Proto,  src IP,  Dest port 
-  PSD_SRV=( )   # Proto,  Src port,  Dest port 
-  PISD_SRV=( )  # Proto,  src IP,  Src port,  Dest port 
-  LayerRule=( ) 
+  IFACES=( )
+  PD_SRV=( )    # Proto,  Dest port
+  PID_SRV=( )   # Proto,  src IP,  Dest port
+  PSD_SRV=( )   # Proto,  Src port,  Dest port
+  PISD_SRV=( )  # Proto,  src IP,  Src port,  Dest port
+  LayerRule=( )
   # some colors
   ReD='\033[0;31m'
   GrN='\033[0;32m'
@@ -176,32 +181,35 @@ VER="1.7beta7"
   DeF='\033[0m'
 ## end initializations 
 
-# Path to Script  - used for  `restart` 
-SCRIPT=/etc/rc.d/dtfirewall
+# Path to Script  - used for  `restart`
+SCRIPT=/usr/local/etc/DTfw/dtfw
 
-## Specify where IP Tables is located 
-# not necessary for: 
-#   archlinux, debian, redhat, centos 
-IPTABLES=''
+## Specify where IP Tables is located
+# not necessary for:
+#   archlinux, debian, redhat, centos
+IPTABLES='/usr/sbin/iptables'
 
-# Path to iptables-save 
+# Path to iptables-save
 IPTABLESSAVE=/usr/sbin/iptables-save
 
-# Path to iptables-restore 
+# Path to iptables-restore
 IPTABLESRESTORE=/usr/sbin/iptables-restore
 
-# Path to IPTables Rules 
+# Path to IPTables Rules
 FWSAVE=/etc/iptables/iptables.rules
 
-# Location of ModProbe 
+# Location of ModProbe
 MODPROBE=/sbin/modprobe
 
-#
 ## List Locations
-WHITELIST=/usr/local/etc/dtfw_whitelist.txt
-BLACKLIST=/usr/local/etc/dtfw_blacklist.txt
-#OUT_WHITELIST=/usr/local/etc/whitelist.txt   # most likely not implemented
-OUT_BLACKLIST=/usr/local/etc/dtfw_blacklist_OUTS.txt   # not implemented - optional
+WHITELIST=/usr/local/etc/DTfw/dtfw-lists/dtfw_whitelist.txt
+BLACKLIST=/usr/local/etc/DTfw/dtfw-lists/dtfw_blacklist.txt
+#OUT_WHITELIST=/usr/local/etc/DTfw/dtfw-lists/dtfw_whitelist_OUTS.txt   # most likely not implemented
+OUT_BLACKLIST=/usr/local/etc/DTfw/dtfw-lists/dtfw_blacklist_OUTS.txt   # not implemented - optional
+
+# DTfw DynamicHosts script - single IP
+# working on Mulitple Dynamic IP list
+DYNHOSTSCRIPT=/usr/local/etc/DTfw/dtfw_dynamichosts.sh
 
 # Server is behind a router or directly connected to the internet 
 #  deals directly with IPSpoofing and Broadcasts
@@ -211,7 +219,7 @@ OUT_BLACKLIST=/usr/local/etc/dtfw_blacklist_OUTS.txt   # not implemented - optio
 IFACES+=("WAN" "eth0") # drops
 IFACES+=("LAN" "eth0")
 IFACES+=("LAN" "eth1") # dhcp
-IFACES+=("WAN" "130.157.32.0")
+IFACES+=("WAN" "192.168.1.1")
 IFACES+=("WAN" "eth1") # drops
 #IFACES+=("WAN" "130.157.0.0")
 IFACES+=("LAN" "eth1:0")
@@ -256,21 +264,21 @@ FancyServices="true"
 Block_Corrupt_Outbound="false"
 ##
 # Block Ping (ipv4) - (aka icmp ping - allow/deny/limit)
-  #  options:  "false | no";  "drop";  "reject" "<mode 1-6>";  "limit" "<RATE>" "<burst>" 
-  ## RATE =  <packets> / <s|second> | <m|minute> | <h|hour> | <d|day> 
-  ## REJECT Modes: 
-   # 1: icmp-port-unreachable  
-   # 2: icmp-net-unreachable 
-   # 3: icmp-host-unreachable 
-   # 4: icmp-proto-unreachable 
-   # 5: icmp-net-prohibited 
-   # 6: icmp-host-prohibited 
+  #  options:  "false | no";  "drop";  "reject" "<mode 1-6>";  "limit" "<RATE>" "<burst>"
+  ## RATE =  <packets> / <s|second> | <m|minute> | <h|hour> | <d|day>
+  ## REJECT Modes:
+   # 1: icmp-port-unreachable
+   # 2: icmp-net-unreachable
+   # 3: icmp-host-unreachable
+   # 4: icmp-proto-unreachable
+   # 5: icmp-net-prohibited
+   # 6: icmp-host-prohibited
 Block_Ping=("no") #Block_Ping=("false")
  #Block_Ping=("DROP")
  #Block_Ping=("reject" "3")
- #Block_Ping=("limit" "1/s" "5") 
+ #Block_Ping=("limit" "1/s" "5")
 ##
-# Allow same-subnet cidr /24 Broadcasts inbound for LAN (wan not implemented) 
+# Allow same-subnet cidr /24 Broadcasts inbound for LAN (wan not implemented)
 Allow_lan_inBCast="true";   # NOT IMPLEMENTED
  # 1 2 or blocks of 4 +1  broadcast
  #wake on lan
@@ -289,7 +297,7 @@ SPOOF_IPS+=("0.0.0.0/8")
 SPOOF_IPS+=("10.0.0.0/8")
 SPOOF_IPS+=("127.0.0.0/8")
 SPOOF_IPS+=("169.254.0.0/16")
-SPOOF_IPS+=("172.16.0.0/12")
+#SPOOF_IPS+=("172.16.0.0/12")
 SPOOF_IPS+=("192.168.0.0/16")
 SPOOF_IPS+=("224.0.0.0/4")
 SPOOF_IPS+=("239.255.255.0/24")
@@ -298,16 +306,17 @@ SPOOF_IPS+=("255.255.255.255")
 
   ## http://www.newartisans.com/2007/09/neat-tricks-with-iptables.html
   #   Scapy - check attacks with
-  ##   source and destination IPs specified 
+  ##   source and destination IPs specified
 
 
 
 # Block Brute Force Ports + Names
 #BruteForce+=("port:(s)" "description")
 BruteForce+=("21:22" "FTP:SSH")
-BruteForce+=("41331" "webmin")
+BruteForce+=("59090" "sabnzbd")
+BruteForce+=("9000" "irssiproxy")
 
-# Other flood protections [limit rate in FORWARD] - prevent DoS 
+# Other flood protections [limit rate in FORWARD] - prevent DoS
 #   http://netfilter.org/documentation/HOWTO/packet-filtering-HOWTO-7.html
 # <rate>/ <s|second> | <m|minute> | <h|hour> | <d|day>
 OTHER_FLOODS+=("syn flood" "1/s")
@@ -319,7 +328,7 @@ OTHER_FLOODS+=("ping of death" "1/s")
 
 
 ## Inbound Malformed/Bad Packet drop
-# 
+#
 DropTableName="MY_DROP"
 LOG_Droped="true"
 
@@ -330,50 +339,58 @@ UseSSHGuard="true"
 SSHG_TableName="sshguard"
 # Specify parameters for SSH guard, and any additional IPTABLES syntaxed parameters
 sshguard_params="-p tcp --dport 22"
-sshguard_moreps="! -s 130.157.33.0/24"
+sshguard_moreps="! -s 192.168.1.1/24"
 
 
 # Allow inbound Samba/HTPC from specific ip/subnet
 #SAMBA+=("ip" "ip/cidr")
-SAMBA+=("192.168.1.0/24")
+SAMBA+=("192.168.1.1/24")
 
 
 
 ### General Services (specific destination port)
 ##  PD_SRV+=( "<DESC>" "<tcp|udp|both>" "<PORT|all>" )
-PD_SRV+=("HTTP" "tcp" "8080")
-#PD_SRV+=("HTTPS" "tcp" "443")
-PD_SRV+=("SSH" "tcp" "443")
+PD_SRV+=("HTTP" "tcp" "80")
+PD_SRV+=("HTTPS" "tcp" "443")
+PD_SRV+=("SSH" "tcp" "22")
 PD_SRV+=("SMPT" "tcp" "25")
 PD_SRV+=("SMPTS" "tcp" "465")
-PD_SRV+=("IRC" "both" "6667:6669")
-PD_SRV+=("torrent" "tcp" "57070:57076")
-PD_SRV+=("KDX" "tcp" "666")
+PD_SRV+=("FTP" "tcp" "21")
+PD_SRV+=("SSH Two" "tcp" "52222")
+PD_SRV+=("FTP Two" "tcp" "50221")
+PD_SRV+=("FTP Passive" "tcp" "55536:56559")
+#PD_SRV+=("IRC" "both" "6667:6669")
+#PD_SRV+=("TELNET" "both" "41836:41838")
+PD_SRV+=("torrent" "tcp" "64840:64842")
+#PD_SRV+=("KDX" "tcp" "666")
 #PD_SRV=("test PD" "both" "0")
 #PD_SRV=("test PD" "ipv6-icmp" "any")
-#PD_SRV=("test PD" "any" "all")
+PD_SRV=("irssiproxy" "any" "9000")
+PD_SRV=("synergy" "both" "24800")
 
 ### Specific Source IP, Dest Port
 ##  PID_SRV+=( "<DESC>" "<tcp|udp|both>" "<src ip>" "<dst port | all>"
-PID_SRV+=("http configs" "tcp" "192.168.1.0/24" "8079")
-PID_SRV+=("http configs" "tcp" "192.168.3.0/24" "8079")
-PID_SRV+=("http configs" "tcp" "172.16.88.0/24" "8079")
-PID_SRV+=("ssh gamebox" "tcp" "192.168.1.6/32" "22")
-PID_SRV+=( "SSH vmNat" "tcp" "172.16.88.0/24" "22" )
-PID_SRV+=("http configs mbp" "tcp" "172.16.88.0/24" "8079")
-PID_SRV+=("synergy" "tcp" "192.168.1.6/32" "24800")
-PID_SRV+=("synergy" "tcp" "192.168.1.41/32" "24800")
-PID_SRV+=("gamebox" "both" "192.168.1.6/32" "all")
-PID_SRV+=( "ssh scwa" "tcp" "75.26.142.246/32" "22" )
-PID_SRV+=( "ssh scwa" "tcp" "75.26.142.246/32" "443" )
+#PID_SRV+=("http configs" "tcp" "192.168.1.0/24" "8079")
+#PID_SRV+=("http configs" "tcp" "192.168.3.0/24" "8079")
+#PID_SRV+=("http configs" "tcp" "172.16.88.0/24" "8079")
+#PID_SRV+=("ssh gamebox" "tcp" "192.168.1.6/32" "22")
+#PID_SRV+=( "SSH vmNat" "tcp" "172.16.88.0/24" "22" )
+#PID_SRV+=("http configs mbp" "tcp" "172.16.88.0/24" "8079")
+#PID_SRV+=("synergy" "tcp" "192.168.1.71/24" "24800")
+#PID_SRV+=("synergy" "tcp" "192.168.1.72/24" "24800")
+#PID_SRV+=("ushare" "tcp" "192.168.1.71/24" "49200")
+#PID_SRV+=("ushare" "udp" "192.168.1.71/24" "1900")
+PID_SRV+=("nfs" "both" "192.168.1.1/24" "all")
+#PID_SRV+=( "ssh scwa" "tcp" "75.26.142.246/32" "22" )
+#PID_SRV+=( "ssh scwa" "tcp" "75.26.142.246/32" "443" )4183q
 #PID_SRV=("test PID" "ipv6-icmp" "any" "any")
 
 
 ### Specific Port Services (source and destination)
 ##  PSD_SRV+=( "<DESC>" "<tcp|udp|both>" "<Source PORT>" "<Destination PORT>")
-PSD_SRV+=( "TELNET bot1" "tcp" "31840:31848" "1843" )
-#PSD_SRV+=( "TELNET bot2" "tcp" "31840:31848" "1844" )
-PSD_SRV+=( "TELNET bot3" "tcp" "31840:31848" "1845" )
+#PSD_SRV+=( "TELNET bot1" "tcp" "41845:41895" "41836" )
+#PSD_SRV+=( "TELNET bot2" "tcp" "41845:41895" "41837" )
+#PSD_SRV+=( "TELNET bot3" "tcp" "41845:41895" "41838" )
 #PSD_SRV+=( "TELNET bot4" "tcp" "31840:31848" "1846" )
 #PSD_SRV=( "test PSD" "ipv6-icmp" "all" "any" )
 #PSD_SRV=( "test PSD" "tcp" "10" "20" )
@@ -384,31 +401,31 @@ PSD_SRV+=( "TELNET bot3" "tcp" "31840:31848" "1845" )
 #PISD_SRV+=( "TELNET bot5" "tcp" "127.0.0.1" "31840:31848" "1843" )
 #PISD_SRV+=( "TELNET bot6" "tcp" "127.0.0.1" "31840:31848" "1844" )
 #PISD_SRV+=( "TELNET bot7" "tcp" "127.0.0.1" "31840:31848" "1845" )
-PISD_SRV+=( "TELNET bot8" "tcp" "127.0.0.1" "31840:31848" "1846" )
-PISD_SRV+=( "Bnc" "tcp" "174.122.218.237" "52010:52021" "366" )
-PISD_SRV+=( "test PISD" "both" "! 126.0.0.1" "! 60" "! 40" )
-PISD_SRV+=( "test PISD" "tcp" "! 126.0.0.1" "! 60" " ! 40" )
-PISD_SRV+=( "test PISD" "ipv6-icmp" "! 126.0.0.1" "any" "any" )
-PISD_SRV+=( "test PISD" "any" "! 126.0.0.1" "any" "any" )
+#PISD_SRV+=( "TELNET bot8" "tcp" "127.0.0.1" "31840:31848" "1846" )
+#PISD_SRV+=( "Bnc" "tcp" "174.122.218.237" "52010:52021" "366" )
+#PISD_SRV+=( "test PISD" "both" "! 126.0.0.1" "! 60" "! 40" )
+#PISD_SRV+=( "test PISD" "tcp" "! 126.0.0.1" "! 60" " ! 40" )
+#PISD_SRV+=( "test PISD" "ipv6-icmp" "! 126.0.0.1" "any" "any" )
+#PISD_SRV+=( "test PISD" "any" "! 126.0.0.1" "any" "any" )
 
 
 
 # Specific:  Proto,  Source IP:Port,  Dest IP:Port,  Action
-# LayerRule=+( "<layer> "<DESC>" "<tcp|udp|any>" "<src ip|any>" "<src port|any>" "<dest ip|any>" "<dest port|any>" "<Action>" 
-  ##  Action Modes: 
-    ##  ACCEPT 
-    ##  DROP 
-    ##  Reject <mode> 
-    ##  Limit <rate> <burst> 
+# LayerRule=+( "<layer> "<DESC>" "<tcp|udp|any>" "<src ip|any>" "<src port|any>" "<dest ip|any>" "<dest port|any>" "<Action>"
+  ##  Action Modes:
+    ##  ACCEPT
+    ##  DROP
+    ##  Reject <mode>
+    ##  Limit <rate> <burst>
     ##  LOG <log prefix text>
-  ## Reject Modes: 
-    ## 1: icmp-port-unreachable       ## 2: icmp-net-unreachable   
-    ## 3: icmp-host-unreachable       ## 4: icmp-proto-unreachable 
-    ## 5: icmp-net-prohibited         ## 6: icmp-host-prohibited   
-    ## 7: tcp-reset 
-  ## Limit Modes: 
-    ## rate:   <packets>/ <s|second> | <m|minute> | <h|hour> | <d|day> 
-    ## burst:  # packet burst 
+  ## Reject Modes:
+    ## 1: icmp-port-unreachable       ## 2: icmp-net-unreachable
+    ## 3: icmp-host-unreachable       ## 4: icmp-proto-unreachable
+    ## 5: icmp-net-prohibited         ## 6: icmp-host-prohibited
+    ## 7: tcp-reset
+  ## Limit Modes:
+    ## rate:   <packets>/ <s|second> | <m|minute> | <h|hour> | <d|day>
+    ## burst:  # packet burst
 
 #LayerRule+=( "169" "testah" "TCP" "" "8080" "" "81" "reject 3" )
 #LayerRule+=( "169" "testah" "TCP" "" "8080" "" "81" "drop" )
@@ -472,13 +489,13 @@ LayerRule+=( "171" "t 171" "" "" "" "" "" "" )
 
 
 
-### log all remaining traffic 
+### log all remaining traffic
 INPUT_LOG_BOGUS="true"
 FORWARD_LOG_BOGUS="true"
 OUTPUT_LOG_BOGUS="true"
-### last line should REJECT with TCP Reset, or DROP 
-#  = "DROP" or "REJECT" 
-INPUT_LAST_LINE="REJECT"   # TODO: make variable a better name 
+### last line should REJECT with TCP Reset, or DROP
+#  = "DROP" or "REJECT"
+INPUT_LAST_LINE="REJECT"   # TODO: make variable a better name
 FORWARD_LAST_LINE="REJECT"
 OUTPUT_LAST_LINE="REJECT"
 
@@ -524,7 +541,7 @@ if (( IPT_STD_OUT == 1 )); then
     IPTABLES="echo -e ${UnL}${IPTABLES}${DeF}"
 fi
 
-# 
+#
 shopt -s nocasematch
 if [[ "$FancyChains" != "true" && "$FancyChains" != 0 ]]; then
     FancyListsIN=0
@@ -538,7 +555,7 @@ shopt -u nocasematch
 
 ### InsertLayerRule  and  _SRV    helper functions
 
-# 
+#
 # http://fixunix.com/networking/11507-port-forwarding-loopback-device.html
 #  sudo iptables -t nat -A PREROUTING -p tcp --dport 889 -i lo -j REDIRECT --to-port 8080
 #  For port forwarding on lo, you need to use the OUTPUT chain instead of PREROUTING
@@ -552,7 +569,7 @@ PortRangeREGEX='^(6553[0-5]|655[0-2][0-9]|65[0-4][0-9][0-9]|[0-6][0-4][0-9][0-9]
 function testNegationPort {
     local _result=$1
     local thisResult="-0"
-    if [ "${2}" == "!" ]; then  thisResult="$3";  
+    if [ "${2}" == "!" ]; then  thisResult="$3";
     elif [[ !("${2}" =~ ${PortRangeREGEX}) ]]; then thisResult=-1; fi
     eval $_result="'$thisResult'"
 }
@@ -560,7 +577,7 @@ IPCIDRREGEX='^((25[0-5]|2[0-4][0-9]|([01])?([0-9])?([0-9]))\.){3}((25[0-5]|2[0-4
 function testNegationIP {
     local _result=$1
     local thisResult="-0"
-    if [ "${2}" == "!" ]; then  thisResult="$3";  
+    if [ "${2}" == "!" ]; then  thisResult="$3";
     elif [[ !(${2} =~  $IPCIDRREGEX) ]]; then thisResult=-1; fi
     eval $_result="'$thisResult'"
 }
@@ -583,14 +600,14 @@ function testDontCare {
 #   uses the variable LayerRule=+( "<layer> "<DESC>" "<tcp|udp|both>" "<src ip>" "<src port>" "<dest ip>" "<dest port>" "<accept/drop/reject/limit>" )
 #    leave an item blank, "", to skip the parameter (if no protocol, then no src/dest port can be used!)
 ##  an advanceed PISD_SRV modification (Protocol, source IP, Source port, Destination port
-#  
+#
 #    Specific:  Proto,  Source IP:Port,  Dest IP:Port
 #    "<layer>" "<DESC>" "<tcp|udp>" "<src ip>" "<src port>" "<dest ip>" "<dest port>" "<accept | drop |
 #                                                                                             reject <method #>
 #                                                                                             limit  <rate> <burst>
 #                                                                                             log <log-text>
 #
-##  if "<layer>" is equal to $1, then insert rule before 
+##  if "<layer>" is equal to $1, then insert rule before
 
 function trim {
     local _result=$1
@@ -609,7 +626,7 @@ function InsertLayerRule {
         if [ "${1}" == "${LayerRule[$((i+0))]}" ]; then
             layer=${LayerRule[$((i+0))]}
             desc="${LayerRule[$((i+1))]}"
-            
+
             Proto="";  srcIP=""; SrcP="";
             DestIP=""; DestP=""; action="";
 
@@ -706,7 +723,7 @@ function InsertLayerRule {
             ##  ACTION  area
             action="${LayerRule[$((i+7))]}"
             prefix=''
-            #${LayerRule[$((i+7))]}   
+            #${LayerRule[$((i+7))]}
             if [[ "$action" == "drop" ]]; then
                 action="-j DROP"
             elif [[ "$action" == "accept" ]]; then
@@ -772,7 +789,7 @@ function InsertLayerRule {
                         echo -e "${GrN}Applying rule without Burst Rate option.${DeF}"
                         action="-m limit --limit ${p1}  -j ACCEPT"
                     fi
-                    
+
                 # end LIMIT
                 ## LOG
                 elif [[ "$action" == "log" ]]; then
@@ -785,7 +802,7 @@ function InsertLayerRule {
                     LPsz=${#LogPrefix}
                     p1=${LayerRule[$((i+7))]:4:((32-LPsz))}
                     #action= "-j LOG --log-prefix \\\"${LogPrefix}${p1}\\\""
-                                        
+
                 # end LOG
                 ## No ACTION
                 elif [ "$action" == "" -o -z "$action" ]; then
@@ -797,7 +814,7 @@ function InsertLayerRule {
                     action=""
                 fi  # end REJECT or LIMIT
             fi  # end  ACTION  area
-        
+
             # slower-processing IF:  if [  ! -n "${LayerRule[$((i+2))]}" -a  -n "${LayerRule[$((i+4))]}"    -o    ! -n "${LayerRule[$((i+2))]}"  -a  -n "${LayerRule[$((i+6))]}"  ]; then
             if [ -z "${LayerRule[$((i+2))]}" ]  &&  [ -n "${LayerRule[$((i+4))]}" -o  -n "${LayerRule[$((i+6))]}" ]; then
                 echo -e "${ReD}Error with LayerRule: "
@@ -808,7 +825,7 @@ function InsertLayerRule {
                 echo -e "${GrN}Skipping rule.${DeF}"
                 continue
             fi
-            
+
 # [ condition ] && (true || [ 1 == 1 ]) || false            
             if [ "$action" == "-j LOG" ]; then
                 # BS section for if action is LOG (the --log-prefix  above fails!)
@@ -892,7 +909,7 @@ spoofTableSet=0
 spoof_chain="INPUT"
 function noSpoof {
     shopt -s nocasematch
-    
+
       iface=""  # interface
     d_iface=""
     d_ifaceNLO="! -i lo"  # TODO: is it needed:  ! -i lo 
@@ -915,7 +932,7 @@ function noSpoof {
         #    bcstSrc=`echo ${x} | awk -F"." '{print $1"."$2"."$3".0"}'`
         #    $IPTABLES -A INPUT -s ${bcstSrc}/24 -d ${x} -j ACCEPT -m comment --comment "LAN broadcast ${x}"
         #done
-        
+
         # ${3} here is   IFACES[1] {ip}
         #ip=`echo ${3} | awk -F"." '{print $1"."$2"."$3".0/24"}'`
         ipOct=(`echo ${3} | awk -F"." '{print $1}'`)  #"\n"$2"\n"$3"\n"$4}'`
@@ -937,11 +954,11 @@ function noSpoof {
         $IPTABLES -A INPUT -m comment --comment "LAN MODE in noSpoof - this does nothing"
         return
     fi
-    
+
     #echo -e "${ReD} doing the spoof rules${DeF}"
     echo " Appling IP Spoofing Rules for${iface}${ip}"
-    
-    
+
+
     if [[ "$spoofTableSet" == 0 ]]; then
         spoofTableSet=1
         #spoof_chain="INPUT"
@@ -957,16 +974,17 @@ function noSpoof {
     $IPTABLES -A ${spoof_chain} ${d_iface} -s 0.0.0.0/8 ${d_ip} -j DROP   -m comment --comment "block spoofing${iface}${ip}"
     $IPTABLES -A ${spoof_chain} ${d_iface} -d 0.0.0.0/8         -j DROP   -m comment --comment "block spoofing${iface}${ip}"
 
-    $IPTABLES -A ${spoof_chain} ${d_iface}${d_ifaceNLO} -s 10.0.0.0/8     ${d_ip} -j DROP   -m comment --comment "block spoofing${iface}${ip}"
-    $IPTABLES -A ${spoof_chain} ${d_iface}${d_ifaceNLO} -s 127.0.0.0/8    ${d_ip} -j DROP   -m comment --comment "block spoofing${iface}${ip}"
-    $IPTABLES -A ${spoof_chain} ${d_iface}${d_ifaceNLO} -s 169.254.0.0/16 ${d_ip} -j DROP   -m comment --comment "block spoofing${iface}${ip}"
-    $IPTABLES -A ${spoof_chain} ${d_iface}${d_ifaceNLO} -s 172.16.0.0/12  ${d_ip} -j DROP   -m comment --comment "block spoofing${iface}${ip}"
-    $IPTABLES -A ${spoof_chain} ${d_iface}${d_ifaceNLO} -s 192.168.0.0/16 ${d_ip} -j DROP   -m comment --comment "block spoofing${iface}${ip}"
+    $IPTABLES -A ${spoof_chain} ${d_iface}${d_ifaceNLO} -s 10.0.0.0/8 ${d_ip} -j DROP -m comment --comment "block spoofing${iface}${ip}"
+    $IPTABLES -A ${spoof_chain} ${d_iface}${d_ifaceNLO} -s 127.0.0.0/8 ${d_ip} -j DROP -m comment --comment "block spoofing${iface}${ip}"
+    $IPTABLES -A ${spoof_chain} ${d_iface}${d_ifaceNLO} -s 169.254.0.0/16 ${d_ip} -j DROP -m comment --comment "block spoofing${iface}${ip}"
+    $IPTABLES -A ${spoof_chain} ${d_iface}${d_ifaceNLO} -s 172.16.0.0/12  ${d_ip} -j DROP -m comment --comment "block spoofing${iface}${ip}"
+    $IPTABLES -A ${spoof_chain} ${d_iface}${d_ifaceNLO} -s 192.168.0.0/16 ${d_ip} -j DROP -m comment --comment "block spoofing${iface}${ip}"
+    $IPTABLES -A ${spoof_chain} ${d_iface}${d_ifaceNLO} -s 192.168.1.0/24 ${d_ip} -j DROP -m comment --comment "block spoofing${iface}${ip}"
 
     ## 224.0.0.0/3  => 255.255.255.255  # need to allow (for whatever reason) 248.0.0.0 => 254.255.255.255.255
     ##  $IPTABLES -A INPUT -s 224.0.0.0/3      -j DROP
     ##  $IPTABLES -A INPUT -d 224.0.0.0/3      -j DROP
-        
+
     ## 224.0.0.0/4  => 239.255.255.255
     $IPTABLES -A ${spoof_chain} ${d_iface} -s 224.0.0.0/4 ${d_ip} -j DROP   -m comment --comment "block spoofing${iface}${ip}"
     $IPTABLES -A ${spoof_chain} ${d_iface} -d 224.0.0.0/4         -j DROP   -m comment --comment "block spoofing${iface}${ip}"
@@ -986,7 +1004,9 @@ function noSpoof {
 ###
 case "$1" in
   start)
-    echo "Starting D.T Firewall $VER"
+    echo
+    echo " - Starting DTfw $VER - "
+    echo
     shopt -s nocasematch
     # enable ip forwarding
     # echo 1 > /proc/sys/net/ipv4/ip_forward
@@ -1030,32 +1050,31 @@ case "$1" in
     $IPTABLES -t nat -X
     $IPTABLES -t mangle -X
     $IPTABLES -X
-    
+
     # allows all input while script starts incase some problems occur
     $IPTABLES -t filter -I INPUT 1 -j ACCEPT -m comment --comment "allow all while script starts"
-    
+
     # Default-Policies
     ## set at END of start script, in case an error occurs and blocks SSH!
-    
-    
+
+
     # brute force chain
     BRUTEF="DropBrute"  # brute force table name
     $IPTABLES -N $BRUTEF
     $IPTABLES -A $BRUTEF -j LOG --log-prefix "${LogPrefix}brute forcer "
     $IPTABLES -A $BRUTEF -j DROP
 
-
-
-
+    # Create Chain for Dymanic Hosts
+    $IPTABLES -N dtfwdynamichosts
 
 ####  TODO: make this work -  bw rates 
     BW_Rates="off"
 
     #  BW_Rates section
-    ## 
+    ##
     # BW_REJECT-Chain
     REJECTER="BW_REJECT"
-    #if [ "$BW_Rates" != "off" -a "$BW_Rates" != "OFF" -a "$BW_Rates" != "disabled" -a "$BW_Rates" != "DISABLED" ]; then    
+    #if [ "$BW_Rates" != "off" -a "$BW_Rates" != "OFF" -a "$BW_Rates" != "disabled" -a "$BW_Rates" != "DISABLED" ]; then
     if [[ "$BW_Rates" != "off" && "$BW_Rates" != "disabled" ]]; then
       $IPTABLES -N $REJECTER
 
@@ -1075,7 +1094,7 @@ case "$1" in
       $IPTABLES -A OUTPUT -j $REJECTER
 
     fi
-    ## 
+    ##
     #  end BW_Rates  section
 #### end TODO: make this work - bw rates
 
@@ -1098,7 +1117,7 @@ case "$1" in
     InsertLayerRule "105"
     # connection tracking
     # related, or established, ACCEPT!
-    $IPTABLES -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT                -m comment --comment "connection tracking INPUT"
+    $IPTABLES -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT                -m comment --comment "connection tracking INPUT"
 
 
     InsertLayerRule "106"
@@ -1122,7 +1141,7 @@ case "$1" in
 #        #$IPTABLES -A INPUT -s 127.0.0.0/8    -j DROP
 #        #$IPTABLES -A INPUT -s 172.16.0.0/12  -j DROP
 #        #$IPTABLES -A INPUT -s 169.254.0.0/16 -j DROP
-#        
+#
 #        $IPTABLES -A ${spoof_chain} -s 0.0.0.0/8        -j DROP   -m comment --comment "block spoofing"
 #        $IPTABLES -A ${spoof_chain} -d 0.0.0.0/8        -j DROP   -m comment --comment "block spoofing"
 #
@@ -1131,7 +1150,7 @@ case "$1" in
 #        ##  $IPTABLES -A INPUT -d 224.0.0.0/3      -j DROP
 #
 #        ## 224.0.0.0/4  => 239.255.255.255
-#        $IPTABLES -A ${spoof_chain} -s 224.0.0.0/4      -j DROP   -m comment --comment "block spoofing"
+#        $IPTABLES -A ${SPOOF_CHAIN} -s 224.0.0.0/4      -j DROP   -m comment --comment "block spoofing"
 #        $IPTABLES -A ${spoof_chain} -d 224.0.0.0/4      -j DROP   -m comment --comment "block spoofing"
 #        $IPTABLES -A ${spoof_chain} -d 239.255.255.0/24 -j DROP   -m comment --comment "block spoofing"
 #        ## 240.0.0.0/5  => 247.255.255.255
@@ -1172,7 +1191,7 @@ case "$1" in
             done
             # yup, trying to clean up the array fubar's things
             ## IFACES=("#{IFACES[@]}")
-            
+
             # initiate the spoof-rules for WAN
             for (( i=0; i< ${#IFACES[@]}; i++ )); do
                 if (( $i %2  == 0 )); then
@@ -1198,7 +1217,7 @@ case "$1" in
             echo -e "${ReD}Error in IFACES. There is an odd amount of parameters:${GrN} ${#IFACES[@]}${DeF}"
         fi
     fi
-        
+
 
 #    elif [ "$IFACES" == "LAN" -o "$IFACES" == "lan" ]; then
 #       # ifconfig | grep -s "eth1" -A 1 | grep -s "inet addr" | awk '{print substr($2,6,15)}'
@@ -1221,9 +1240,9 @@ case "$1" in
 ##echo "                $IPTABLES -A INPUT -s ${bcstSrc}/24 -d ${x} -j ACCEPT -m comment --comment \"LAN broadcast ${x}\""
 #            done
 #        fi
-#        
+#
 #        ## TODO: select good vs bad SPOOFS and drop bad ones
-#        
+#
 #        #SPOOF_IPS+=("0.0.0.0/8")
 #        #SPOOF_IPS+=("10.0.0.0/8")
 #        #SPOOF_IPS+=("127.0.0.0/8")
@@ -1242,13 +1261,13 @@ case "$1" in
 ##    do
 ##      if (( $i % 2 == 0 )); then
 ##        $IPTABLES -A INPUT -p tcp --dport ${BruteForce[$i]} \
-##          -m state --state NEW -m recent --set --name "BF_${BruteForce[$((i+1))]}"  \
+##          -m conntrack --ctstate NEW -m recent --set --name "BF_${BruteForce[$((i+1))]}"  \
 ##          -m comment --comment "${BruteForce[$((i+1))]}"
 ##        $IPTABLES -A INPUT -p tcp --dport ${BruteForce[$i]} \
-##          -m state --state NEW -m recent --update --seconds 60 --hitcount 8 --rttl --name "BF_${BruteForce[$((i+1))]}" -j ${BRUTEF} \
+##          -m conntrack --ctstate NEW -m recent --update --seconds 60 --hitcount 8 --rttl --name "BF_${BruteForce[$((i+1))]}" -j ${BRUTEF} \
 ##          -m comment --comment "${BruteForce[$((i+1))]}"
 ##      fi
-##    done      
+##    done
 #    fi
 
 
@@ -1265,19 +1284,19 @@ case "$1" in
     InsertLayerRule "108"
     # Loopback-Network-Communication allow
     $IPTABLES -A INPUT -i lo -j ACCEPT    -m comment --comment "loopback iface inbound"
-   
 
 
 
-    
+
+
     # a small section for OUTPUT chain in FILTER table
-    ### 
+    ###
     #InsertLayerRule "162"  TODO 
     ### loop for WHITELIST ( use WHITELIST file (end of file);  TODO: AND allow a second file AND script array )
     ## TODO
     #InsertLayerRule "163"  TODO 
     ### loop for Outbound BLACKLIST ( separate list as INPUT, AND array )
-    
+
     InsertLayerRule "164"
     # giant if => used to check outbound packets for corruption
     OUT_BAD_PAC_DESC=()
@@ -1285,7 +1304,7 @@ case "$1" in
     OUT_NEW_DESC=()
     if [[ "$Block_Corrupt_Outbound" == "false" || "$Block_Corrupt_Outbound" == "0" || "$Block_Corrupt_Outbound" == "no" ]]; then
         # connection tracking
-        $IPTABLES -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT   -m comment --comment "connection tracking OUTPUT"
+        $IPTABLES -A OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT   -m comment --comment "connection tracking OUTPUT"
         OUT_BAD_PAC_DESC="corrupt packets OUTPUT"
         OUT_NEW_STATE="NEW"
         OUT_NEW_DESC="new connections OUTPUT"
@@ -1301,15 +1320,15 @@ case "$1" in
 
     InsertLayerRule "166"
     # Corrupt Packet drop
-    $IPTABLES -A OUTPUT -m state --state INVALID -j DROP            -m comment --comment "${OUT_BAD_PAC_DESC}"
+    $IPTABLES -A OUTPUT -m conntrack --ctstate INVALID -j DROP            -m comment --comment "${OUT_BAD_PAC_DESC}"
 
     InsertLayerRule "167" 
-    # DROP/REJECT rules [TODO] - destination port blocking (source IP blocking) - iface? 
+    # DROP/REJECT rules [TODO] - destination port blocking (source IP blocking) - iface?
     ### loop for blocking outbound
 
     InsertLayerRule "168" # new+connection tracking - output
     # accept otherwise
-    $IPTABLES -A OUTPUT -m state --state ${OUT_NEW_STATE} -j ACCEPT -m comment --comment "${OUT_NEW_DESC}"   
+    $IPTABLES -A OUTPUT -m conntrack --ctstate ${OUT_NEW_STATE} -j ACCEPT -m comment --comment "${OUT_NEW_DESC}"
     InsertLayerRule "169" # log bogus outward connections (last rule)
     ###
     # end OUTPUT section
@@ -1322,16 +1341,16 @@ case "$1" in
     InsertLayerRule "132"
     # connection tracking
     # related, or established, ACCEPT!
-    $IPTABLES -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT                 -m comment --comment "connection tracking FORWARD"
+    $IPTABLES -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT                 -m comment --comment "connection tracking FORWARD"
 
     InsertLayerRule "133"
     # Force ACCEPT Rules [TODO]
-    
+
     # unclean data (attacks, corrupt, ect) - FORWARD chain
     ### 
     InsertLayerRule "134"
     # Corrupt Packet drop 
-    $IPTABLES -A FORWARD -m state --state INVALID -j DROP   -m comment --comment "corrupt packets FORWARD"
+    $IPTABLES -A FORWARD -m conntrack --ctstate INVALID -j DROP   -m comment --comment "corrupt packets FORWARD"
     InsertLayerRule "135"
     # Stealth Scans etc. DROPpen
     # Non Flags 
@@ -1360,7 +1379,7 @@ case "$1" in
     # pettingers.org/code/firewall.html
     $IPTABLES -A FORWARD ! -i lo -p tcp -m tcp --tcp-flags FIN,SYN,RST,PSH,ACK,URG NONE -j $DropTableName -m comment --comment "from pettingers.org"
     # Force SYN packets check
-    $IPTABLES -A FORWARD -p tcp ! --syn -m state --state NEW -j $DropTableName  -m comment --comment "force SYN packets check"
+    $IPTABLES -A FORWARD -p tcp ! --syn -m conntrack --ctstate NEW -j $DropTableName  -m comment --comment "force SYN packets check"
     InsertLayerRule "136"
     # Force Fragments packets check
     $IPTABLES -A FORWARD -f -j $DropTableName   -m comment --comment "force fragment packet check"
@@ -1371,9 +1390,9 @@ case "$1" in
     ### Other flood protections - limit DoS
     # limits rate in FORWARD
     # http://netfilter.org/documentation/HOWTO/packet-filtering-HOWTO-7.html
-    #    iptables -A FORWARD -p tcp --syn -m limit --limit 1/s -j ACCEPT
-    #    iptables -A FORWARD -p tcp --tcp-flags SYN,ACK,FIN,RST RST -m limit --limit 1/s -j ACCEPT
-    #    iptables -A FORWARD -p icmp --icmp-type echo-request -m limit --limit 1/s -j ACCEPT
+        iptables -A FORWARD -p tcp --syn -m limit --limit 1/s -j ACCEPT
+        iptables -A FORWARD -p tcp --tcp-flags SYN,ACK,FIN,RST RST -m limit --limit 1/s -j ACCEPT
+        iptables -A FORWARD -p icmp --icmp-type echo-request -m limit --limit 1/s -j ACCEPT
     # TODO: research wtf those 3 lines mean
     for (( i=0; i< ${#OTHER_FLOODS[@]}; i++ ))
     do
@@ -1388,7 +1407,7 @@ case "$1" in
         else
           echo -e "${ReD}there is no rule type for OTHER_FLOODS=(\"${OTHER_FLOODS[$i]}\" \"${OTHER_FLOODS[$((i+1))]}\"), skipping it.${DeF}"
         fi
-          
+
         if [ "${OFP}" != "" ]; then
           $IPTABLES -A FORWARD ${OFP} -m limit --limit ${OTHER_FLOODS[$((i+1))]} -j ACCEPT   -m comment --comment "limit DoS ${OTHER_FLOODS[$i]}"
         fi
@@ -1401,14 +1420,14 @@ case "$1" in
 
     InsertLayerRule "139"
     # allow FORWARD after all them bad packet checks
-    $IPTABLES -A FORWARD ! -i ppp0 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT   -m comment --comment "connection tracking FORWARD"
+    $IPTABLES -A FORWARD ! -i ppp0 -m conntrack --ctstate NEW,ESTABLISHED,RELATED -j ACCEPT   -m comment --comment "connection tracking FORWARD"
 
     InsertLayerRule "140" # log bogus forward connections (last rule)
     ###
     # end FORWARD chain in FILTER table
-    
-    
-     
+
+
+
     #
     ## FILTER INPUT chain
     # unclean data (attacks, corrupt, ect) - INPUT chain
@@ -1422,7 +1441,7 @@ case "$1" in
     fi
 
     # Corrupt Packet drop 
-    $IPTABLES -A $invalid_frag_chain -m state --state INVALID -j $DropTableName     -m comment --comment "invalid packets INPUT"
+    $IPTABLES -A $invalid_frag_chain -m conntrack --ctstate INVALID -j $DropTableName     -m comment --comment "invalid packets INPUT"
     # Force Fragments packets check
     $IPTABLES -A $invalid_frag_chain -f -j $DropTableName     -m comment --comment "force fragment packet check"
 
@@ -1460,7 +1479,7 @@ case "$1" in
     # pettingers.org/code/firewall.html
     $IPTABLES -A $uncleanChainIN ! -i lo -p tcp -m tcp --tcp-flags FIN,SYN,RST,PSH,ACK,URG NONE -j $DropTableName -m comment --comment "from pettingers.org"
     # Force SYN packets check
-    $IPTABLES -A $uncleanChainIN -p tcp ! --syn -m state --state NEW -j $DropTableName   -m comment --comment "force SYN packets check"
+    $IPTABLES -A $uncleanChainIN -p tcp ! --syn -m conntrack --ctstate NEW -j $DropTableName   -m comment --comment "force SYN packets check"
     ###
     # end unclean data - INPUT chain
 
@@ -1477,10 +1496,10 @@ case "$1" in
     # Don't log route packets coming from routers - too much logging
     $IPTABLES -A INPUT -p udp ! -i lo   --dport 520 -j REJECT   -m comment --comment "do not log route packets from routers"
 
-    
-      
+
+
     InsertLayerRule "113"
-    
+
     # Block Ping
     if [[ $"${Block_Ping[0]}" == "false" || "${Block_Ping[0]}" == "no" ]]; then
       $IPTABLES  -A INPUT -p icmp --icmp-type echo-request -j ACCEPT   -m comment --comment "allow ping"
@@ -1507,9 +1526,9 @@ case "$1" in
               echo -e "${ReD}Block Ping Reject bounce-back-error typo: \"${Block_Ping[1]}\", using \"icmp-port-unreachable\".${DeF}"
               sendBack="icmp-port-unreachable"  ;;
       esac
-      $IPTABLES -A INPUT -p icmp --icmp-type echo-request -j REJECT --reject-with ${sendBack} -m comment --comment "reject ping" 
+      $IPTABLES -A INPUT -p icmp --icmp-type echo-request -j REJECT --reject-with ${sendBack} -m comment --comment "reject ping"
       echo " Ping (ipv4): Reject with ${sendBack}."
-    ### ICMP Rate limits (elimiates some SMURF packets)      
+    ### ICMP Rate limits (elimiates some SMURF packets)
     elif [[ "${Block_Ping[0]}" == "limit" ]]; then
         # dont know what the first two lines do - TODO: research wtf those 2 lines mean
         $IPTABLES -A INPUT -p icmp -m icmp --icmp-type address-mask-request -j DROP
@@ -1520,45 +1539,45 @@ case "$1" in
 
 
 
-       
 
 
 
-    
+
+
 
 # HTTP flood check
 # http://lists.netfilter.org/pipermail/netfilter/2003-June/044762.html
-#    $IPTABLES -N flood-chk
-#    $IPTABLES -A INPUT -p tcp --dport 8080 --syn -j flood-chk -m comment --comment "HEEEEERRRRRRRRRR"
-#    $IPTABLES -A flood-chk -m limit --limit 1/sec --limit-burst 2 -j RETURN
-#    $IPTABLES -A flood-chk -j LOG --log-prefix "${LogPrefix}flood packet"
-#    $IPTABLES -A flood-chk -j DROP | REJECT
-    
+    $IPTABLES -N flood-chk
+    $IPTABLES -A INPUT -p tcp --dport 80 --syn -j flood-chk -m comment --comment "HEEEEERRRRRRRRRR"
+    $IPTABLES -A flood-chk -m limit --limit 1/sec --limit-burst 2 -j RETURN
+    $IPTABLES -A flood-chk -j LOG --log-prefix "${LogPrefix}flood packet"
+    $IPTABLES -A flood-chk -j DROP
+
     InsertLayerRule "114"  # INPUT flood protections - TODO
     ### Other flood protections - limit DoS [ Implemented in FORWARD section ]
     # limits rate in FORWARD - fuction here for future FLOOD additions (for INPUT table)
-#    for (( i=0; i< ${#OTHER_FLOODS[@]}; i++ ))
-#    do
-#      if (( $i % 2 == 0 )); then
-#        OFP=( )
-#        if [ "${OTHER_FLOODS[$i]}"   == "syn flood" ]; then
-#          OFP="-p tcp --syn -m limit"
-#        elif [ "${OTHER_FLOODS[$i]}" == "furtive port scanner" ]; then
-#          OFP="-p tcp --tcp-flags SYN,ACK,FIN,RST RST"
-#        elif [ "${OTHER_FLOODS[$i]}" == "ping of death" ]; then
-#          OFP="-p icmp --icmp-type echo-request"
-#        else
-#          echo -e "${ReD}there is no rule type for OTHER_FLOODS=(\"${OTHER_FLOODS[$i]}\" \"${OTHER_FLOODS[$((i+1))]}\"), skipping it.${DeF}"
-#        fi
-#
-#        if [ "${OFP}" != "" ]; then
-#          $IPTABLES -A FORWARD ${OFP} -m limit --limit ${OTHER_FLOODS[$((i+1))]} -j ACCEPT   -m comment --comment "limit DoS ${OTHER_FLOODS[$i]}"
-#        fi
-#      fi
-#    done
+    for (( i=0; i< ${#OTHER_FLOODS[@]}; i++ ))
+    do
+      if (( $i % 2 == 0 )); then
+        OFP=( )
+        if [ "${OTHER_FLOODS[$i]}"   == "syn flood" ]; then
+          OFP="-p tcp --syn -m limit"
+        elif [ "${OTHER_FLOODS[$i]}" == "furtive port scanner" ]; then
+          OFP="-p tcp --tcp-flags SYN,ACK,FIN,RST RST"
+        elif [ "${OTHER_FLOODS[$i]}" == "ping of death" ]; then
+          OFP="-p icmp --icmp-type echo-request"
+        else
+          echo -e "${ReD}there is no rule type for OTHER_FLOODS=(\"${OTHER_FLOODS[$i]}\" \"${OTHER_FLOODS[$((i+1))]}\"), skipping it.${DeF}"
+        fi
+
+        if [ "${OFP}" != "" ]; then
+          $IPTABLES -A FORWARD ${OFP} -m limit --limit ${OTHER_FLOODS[$((i+1))]} -j ACCEPT   -m comment --comment "limit DoS ${OTHER_FLOODS[$i]}"
+        fi
+      fi
+    done
 
 
-   
+
     InsertLayerRule "115"
     # Block Brute Force 
     BF_chain="INPUT"
@@ -1571,16 +1590,16 @@ case "$1" in
     do
       if (( $i % 2 == 0 )); then
         $IPTABLES -A ${BF_chain} -p tcp --dport ${BruteForce[$i]} \
-          -m state --state NEW -m recent --set --name "BF_${BruteForce[$((i+1))]}"  \
+          -m conntrack --ctstate NEW -m recent --set --name "BF_${BruteForce[$((i+1))]}"  \
           -m comment --comment "${BruteForce[$((i+1))]}"
         $IPTABLES -A ${BF_chain} -p tcp --dport ${BruteForce[$i]} \
-          -m state --state NEW -m recent --update --seconds 60 --hitcount 8 --rttl --name "BF_${BruteForce[$((i+1))]}" -j ${BRUTEF} \
+          -m conntrack --ctstate NEW -m recent --update --seconds 60 --hitcount 8 --rttl --name "BF_${BruteForce[$((i+1))]}" -j ${BRUTEF} \
           -m comment --comment "${BruteForce[$((i+1))]}"
       fi
     done
-   
 
-    
+
+
     InsertLayerRule "116"
 ### _SRV section
 
@@ -1614,7 +1633,7 @@ case "$1" in
                 echo -e "${ReD}Error in PD_SRV rule${GrN} ${PD_SRV[$i]} ${ReD}with destination port value:${GrN} ${PD_SRV[$((i+2))]}${DeF}"
             fi
         fi
-        
+
         proto="${PD_SRV[$((i+1))]}"
         if [[ "${proto}" != "any" && "${proto}" != "all"  ]]; then
             if [[ "${proto}" == "tcp" ]]; then
@@ -1622,7 +1641,7 @@ case "$1" in
             elif [[ "${proto}" == "udp" ]]; then
                 proto="udp"
             elif [[ "${proto}" == "both" ]]; then
-                $IPTABLES -t filter -A ${SRV_chain} -m state --state NEW -p tcp      ${dport} -j ACCEPT -m comment --comment "${PD_SRV[$i]} tcp"
+                $IPTABLES -t filter -A ${SRV_chain} -m conntrack --ctstate NEW -p tcp      ${dport} -j ACCEPT -m comment --comment "${PD_SRV[$i]} tcp"
                 proto="udp"
             else
                 if [[ "${Show_Protocol_Warning}" == "true" ]]; then
@@ -1638,11 +1657,11 @@ case "$1" in
                 echo -e "${ReD} Unable to assign a port to ${GrN} any ${ReD}or${GrN} all ${ReD}protocols.${DeF}"
             fi
         fi
-                    
 
-        $IPTABLES   -t filter -A ${SRV_chain} -m state --state NEW -p ${proto} ${dport} -j ACCEPT -m comment --comment "${PD_SRV[$i]} ${proto}"
 
-## unset array (leaves empty item)        
+        $IPTABLES   -t filter -A ${SRV_chain} -m conntrack --ctstate NEW -p ${proto} ${dport} -j ACCEPT -m comment --comment "${PD_SRV[$i]} ${proto}"
+
+## unset array (leaves empty item)
         unset PD_SRV[$i]
         unset PD_SRV[$i+1]
         unset PD_SRV[$i+2]
@@ -1695,7 +1714,7 @@ case "$1" in
             elif [[ "${proto}" == "udp" ]]; then
                 proto="udp"
             elif [[ "${proto}" == "both" ]]; then
-                $IPTABLES -t filter -A ${SRV_chain} -m state --state NEW ${srcIP} -p tcp \
+                $IPTABLES -t filter -A ${SRV_chain} -m conntrack --ctstate NEW ${srcIP} -p tcp \
                     ${dport} -j ACCEPT -m comment --comment "${PID_SRV[$i]} tcp"
                 proto="udp"
             else
@@ -1711,11 +1730,11 @@ case "$1" in
                 echo -e "${ReD} Unable to assign a port to${GrN} any ${ReD}or${GrN} all ${ReD}protocols.${DeF}"
             fi
         fi
-        
-        $IPTABLES   -t filter -A ${SRV_chain} -m state --state NEW ${srcIP} -p ${proto} \
+
+        $IPTABLES   -t filter -A ${SRV_chain} -m conntrack --ctstate NEW ${srcIP} -p ${proto} \
             ${dport} -j ACCEPT -m comment --comment "${PID_SRV[$i]} ${proto}"
 
-## unset array (leaves empty item)        
+## unset array (leaves empty item)
         unset PID_SRV[$i]
         unset PID_SRV[$i+1]
         unset PID_SRV[$i+2]
@@ -1770,7 +1789,7 @@ case "$1" in
             elif [[ "${proto}" == "udp" ]]; then
                 proto="udp"
             elif [[ "${proto}" == "both" ]]; then
-                $IPTABLES -t filter -A  -m state --state NEW -p tcp      ${sport} ${dport} \
+                $IPTABLES -t filter -A  -m conntrack --ctstate NEW -p tcp      ${sport} ${dport} \
                     -j ACCEPT -m comment --comment "${PSD_SRV[$i]} tcp"
                 proto="udp"
             else
@@ -1790,7 +1809,7 @@ case "$1" in
                 echo -e "${ReD} Unable to assign a port to ${GrN} any ${ReD}or${GrN} all ${ReD}protocols.${DeF}"
             fi
         fi
-        $IPTABLES   -t filter -A ${SRV_chain} -m state --state NEW -p ${proto} ${sport} ${dport} \
+        $IPTABLES   -t filter -A ${SRV_chain} -m conntrack --ctstate NEW -p ${proto} ${sport} ${dport} \
             -j ACCEPT -m comment --comment "${PSD_SRV[$i]} ${proto}"
 
 ## unset array (leaves empty item)        
@@ -1798,7 +1817,7 @@ case "$1" in
         unset PSD_SRV[$i+1]
         unset PSD_SRV[$i+2]
         unset PSD_SRV[$i+3]
-        
+
       fi
     done
 
@@ -1862,7 +1881,7 @@ case "$1" in
             elif [[ "${proto}" == "udp" ]]; then
                 proto="udp"
             elif [[ "${proto}" == "both" ]]; then
-                $IPTABLES -t filter -A ${SRV_chain} -m state --state NEW ${srcIP} -p tcp \
+                $IPTABLES -t filter -A ${SRV_chain} -m conntrack --ctstate NEW ${srcIP} -p tcp \
                     ${sport} ${dport} -j ACCEPT  -m comment --comment "${PISD_SRV[$i]} tcp"
                 proto="udp"
             else
@@ -1882,12 +1901,12 @@ case "$1" in
                 echo -e "${ReD} Unable to assign a port to ${GrN} any ${ReD}or${GrN} all ${ReD}protocols.${DeF}"
             fi
         fi
-        
-        $IPTABLES   -t filter -A ${SRV_chain} -m state --state NEW ${srcIP} -p ${proto} \
+
+        $IPTABLES   -t filter -A ${SRV_chain} -m conntrack --ctstate NEW ${srcIP} -p ${proto} \
             ${sport} ${dport} -j ACCEPT  -m comment --comment "${PISD_SRV[$i]} ${proto}"
 
 
-## unset array (leaves empty item)        
+## unset array (leaves empty item)
         unset PISD_SRV[$i]
         unset PISD_SRV[$i+1]
         unset PISD_SRV[$i+2]
@@ -1899,9 +1918,9 @@ case "$1" in
 #    shopt -u nocasematch
 
 ### end _SRV section
-    
 
-    
+
+
     InsertLayerRule "117"
     # Samba | HTPC
     SMB_chain="INPUT"
@@ -1910,19 +1929,19 @@ case "$1" in
         #$IPTABLES -N $SMB_chain
         $IPTABLES -A INPUT -j ${SMB_chain}     -m comment --comment "Samba Services"
     fi
-    
+
     for (( i=0; i< ${#SAMBA[@]}; i++ ))
     do
       $IPTABLES -A ${SMB_chain} -p udp -m udp -s ${SAMBA[$i]} --dport 137 -j ACCEPT   -m comment --comment "SAMBA $((i+1))"
       $IPTABLES -A ${SMB_chain} -p udp -m udp -s ${SAMBA[$i]} --dport 138 -j ACCEPT   -m comment --comment "SAMBA $((i+1))"
-      $IPTABLES -A ${SMB_chain} -m state --state NEW -m tcp -p tcp -s ${SAMBA[$i]} --dport 139 -j ACCEPT   -m comment --comment "SAMBA $((i+1))"
-      $IPTABLES -A ${SMB_chain} -m state --state NEW -m tcp -p tcp -s ${SAMBA[$i]} --dport 445 -j ACCEPT   -m comment --comment "SAMBA $((i+1))"
+      $IPTABLES -A ${SMB_chain} -m conntrack --ctstate NEW -m tcp -p tcp -s ${SAMBA[$i]} --dport 139 -j ACCEPT   -m comment --comment "SAMBA $((i+1))"
+      $IPTABLES -A ${SMB_chain} -m conntrack --ctstate NEW -m tcp -p tcp -s ${SAMBA[$i]} --dport 445 -j ACCEPT   -m comment --comment "SAMBA $((i+1))"
     done
         # All IPs
     #     $IPTABLES -A INPUT -p udp -m udp --dport 137 -j ACCEPT
     #     $IPTABLES -A INPUT -p udp -m udp --dport 138 -j ACCEPT
-    #     $IPTABLES -A INPUT -m state --state NEW -m tcp -p tcp --dport 139 -j ACCEPT
-    #     $IPTABLES -A INPUT -m state --state NEW -m tcp -p tcp --dport 445 -j ACCEPT
+    #     $IPTABLES -A INPUT -m conntrack --ctstate NEW -m tcp -p tcp --dport 139 -j ACCEPT
+    #     $IPTABLES -A INPUT -m conntrack --ctstate NEW -m tcp -p tcp --dport 445 -j ACCEPT
 
 
 
@@ -1931,7 +1950,7 @@ case "$1" in
 
 
 
-    
+
 
     # Max. 500/Seconds (5/Jiffie) send
 #    echo 5 > /proc/sys/net/ipv4/icmp_ratelimit
@@ -1953,6 +1972,11 @@ case "$1" in
 
     $IPTABLES -t filter -D INPUT 1
 
+# Dynamic Hosts INPUT CHAIN
+    $IPTABLES -I INPUT 1 -j dtfwdynamichosts
+
+# Dynamic Hosts Flush chain
+    $IPTABLES -F dtfwdynamichosts
 
     BLchain="INPUT"
     if [[ "$FancyListsIN" == "true" || "$FancyListsIN" == "TRUE" ]]; then
@@ -1960,7 +1984,7 @@ case "$1" in
         $IPTABLES -N $BLchain
         $IPTABLES -I INPUT 1 -j ${BLchain}     -m comment --comment "BlackList Chain"
     fi
-    
+
    ### Blacklist
    #
    if [ ! -r "$BLACKLIST" ]; then
@@ -1992,7 +2016,7 @@ case "$1" in
    fi
    InsertLayerRule "104" # input  blacklist
    InsertLayerRule "163" # output blacklist
-   
+
 
 
    ### SSH Guard
@@ -2004,7 +2028,7 @@ case "$1" in
      echo -e "${GrN}iptables -I INPUT 1 ${sshguard_params} ${sshguard_moreps} -j ${SSHG_TableName} -m comment --comment \"sshguard\"${DeF}"
    fi
    InsertLayerRule "103" # sshguard (input)
-    
+
 
     WLchain="INPUT"
     if [[ "$FancyListsIN" == "true" ]]; then
@@ -2044,13 +2068,15 @@ case "$1" in
            $IPTABLES -I ${WLchain} ${wl} -t filter -s $wip -j ACCEPT   -m comment --comment "whitelist ${wl} ${comment}"
            wl=$((wl+1));
        done
-       
+
    fi
    InsertLayerRule "102" # input  whitelist
    InsertLayerRule "162" # output whitelist
-   
 
 
+   # Torrent DHT lines to aid in tracking to help keep ratio's updated.
+   # $IPTABLES -t raw -I PREROUTING -p udp --dport $TORRENTPORT -j NOTRACK
+   # $IPTABLES -t raw -I OUTPUT -p udp --sport $TORRENTPORT -j NOTRACK
 
    # Log All Packets (inserted as first rule)
    if [[ "$LOG_ALL_PACKETS" == "true" || "$LOG_ALL_PACKETS" == "1" || "$LOG_ALL_PACKETS" == "yes" ]]; then
@@ -2065,8 +2091,7 @@ case "$1" in
    InsertLayerRule "131" # forward - LogAllPackets
    InsertLayerRule "161" # output  - LogAllPackets
 
-    
-   
+
     # Log Bogus and Last Line segment  
     ### 
     ## INPUT_LOG_BOGUS
@@ -2104,26 +2129,34 @@ case "$1" in
       #$IPTABLES -A OUTPUT -p udp -j DROP                             -m comment --comment "drop udp"
       $IPTABLES -A OUTPUT -p udp -j REJECT --reject-with icmp-port-unreachable   -m comment --comment "send port unreachable udp"
     fi
-    ### 
+    ###
     # end Log Bogus and Last Line segment 
-   
 
+    # DTfw Dynamic Host
+    if [ -f $DYNHOSTSCRIPT ];then
+       echo " Adding Dynamic Hosts Support"
+       sh $DYNHOSTSCRIPT
+    else
+      echo " DTfw Dynamic Hosts script not in use."
+    fi
 
-   # Default-Policies   
+   # Default-Policies
    $IPTABLES -P INPUT DROP
    $IPTABLES -P OUTPUT DROP
    $IPTABLES -P FORWARD DROP
-   
-   
-   
-   
-   echo "Firewall Started"
+
+
+
+
+   echo " Firewall Started"
 
    shopt -u nocasematch
     ;;
 
   stop)
-    echo "FW Script Stopped"
+    echo
+    echo " - DTfw Script Stopped - "
+    echo
     # Table Flush
     $IPTABLES -t filter -F
     $IPTABLES -t nat -F
@@ -2136,50 +2169,61 @@ case "$1" in
     $IPTABLES -P OUTPUT ACCEPT
     $IPTABLES -P FORWARD ACCEPT
     ;;
-  
+
   restart)
-      echo -e "D.T Firewall $VER"
-      echo "Restarting Firewall"
-      sleep 2
-      echo "Flushing Firewall..."
-      sleep 1
-     echo "Starting Firewall..."
-     $SCRIPT start
-     sleep 1
-     echo "Saving New Settings..."
-     echo "Firewall On..."
-     echo " "
-      ;; 
+    echo
+    echo -e " - DTfw $VER - "
+    echo
+    echo " Restarting Firewall"
+    sleep 2
+    echo " Flushing Firewall..."
+    sleep 1
+    echo " Starting Firewall..."
+    $SCRIPT start
+    sleep 1
+    echo " Saving New Settings..."
+    echo " Firewall On..."
+    echo " "
+      ;;
 
   save)
-    echo -e "D.T Firewall $VER"
-    echo "Saving Tables"
+    echo
+    echo -e " - DTfw $VER - "
+    echo
+    echo " Saving Tables"
     $IPTABLESSAVE > $FWSAVE
-    echo "IPTable Rules Saved"
+    echo " IPTable Rules Saved"
     ;;
-    
+
   restore)
-    echo -e "D.T Firewall $VER"
-    echo "Restoring IPTables Rules"
+    echo
+    echo -e " - DTfw $VER - "
+    echo
+    echo " Restoring IPTables Rules"
     $IPTABLESRESTORE < $FWSAVE
-    echo "IPTable Rules Restored"
-    ;;    
+    echo " IPTable Rules Restored"
+    ;;
 
   status)
-    echo -e "D.T Firewall $VER"
-    echo "Table Filter"
+    echo
+    echo -e " - DTfw $VER - "
+    echo
+    echo " Table Filter"
     $IPTABLES -L -vn
-    echo "Table Nat"
+    echo " Table Nat"
     $IPTABLES -t nat -L -vn
-    echo "Table Mangle"
+    echo " Table Mangle"
     $IPTABLES -t mangle -L -vn
     ;;
 
   *)
-    echo -e "D.T Firewall $VER"
-    echo -e "${ReD}Incorrect Call${DeF}"
-    echo "Syntax: $0 {start|stop|restart|save|restore|status}"
+    echo
+    echo -e " - DTfw $VER - "
+    echo
+    echo -e " ${ReD}Incorrect Call${DeF}"
+    echo " Syntax: $0 {start|stop|restart|save|restore|status}"
     exit 1
     ;;
 
 esac
+
