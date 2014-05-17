@@ -1,14 +1,14 @@
-#!/bin/bash - 
+#!/bin/bash -
 #===============================================================================
 #
 #          FILE: dtfw_dynamichosts.sh
-# 
-#         USAGE: ./dtfw_dynamichosts.sh 
-# 
+#
+#         USAGE: ./dtfw_dynamichosts.sh
+#
 #   DESCRIPTION: Dumb Terminals plug-in script to help handle Dynamic DNS, to ease
 #                  remote access for ever changing IP's with the firewall.
 #       OPTIONS: ---
-#  REQUIREMENTS: IPTables and DTfw script. 
+#  REQUIREMENTS: IPTables and DTfw script.
 #          BUGS: ---
 #         NOTES: ---
 #        AUTHOR: Mike Redd (MikereDD), mredd@0tue0.com
@@ -36,14 +36,14 @@ IPTABLES='/usr/sbin/iptables'
 DYNAMICDNSLIST="/usr/local/etc/DTfw/dtfw_dynamiclists/dtfw_dynamichosts.lst"
 DYNAMICDNSLISTTMP="/usr/local/etc/DTfw/dtfw_dynamiclists/dtfw_dynamichoststmp.lst"
 
-if [ -f $DTFWDynDNSList ];then
+if [ -f "$DYNAMICDNSLIST" ];then
     echo "############################################"
     echo -e " DTfw Dynamic Hosts ver.$VER"
     echo -e " running on server: $HOSTNAME"
     echo -e " Date/Time: $(date)"
     echo " Found dtfw_dynamichosts list... using list"
     echo "############################################"
-    HOST=$(cat $DTFWDynDNSList)
+    HOST=$(cat $DYNAMICDNSLIST)
 # check to make sure we have enough args passed.
 elif [ "${#@}" -ne "1" ]; then
     echo "$0 hostname"
