@@ -43,12 +43,22 @@
 #   super-fast: no unnecessary chains
 #   clean: chains for each 'layer' -ish
 #   option for 'pro' style, remove input checking
+<<<<<<< HEAD
 #  re-classify LayerNumbers - make larger ranges? 
+=======
+#  re-classify LayerNumbers - make larger ranges?
+>>>>>>> master
 #       filter -                     INPUT 101-125  FORWARD 131-155  OUTPUT 161-185
 #       mangle - PreRouting 201-219  Input 221-239  FORWARD 241-259  OUTPUT 261-279  PostRouting 281-299
 #       nat    - PreRouting 301-329  POSTROUTING 331-359  OUTPUT 361-389
 #
+<<<<<<< HEAD
 VER="1.9beta1"
+=======
+VER="1.9beta2"
+# move out of the usr/local folder and into /etc/DTfw
+#VER="1.9beta1"
+>>>>>>> master
 # Multiple Dynamic DNS Support
 # Clean up some code
 # TODO: Clean the code completely
@@ -96,7 +106,11 @@ VER="1.9beta1"
 #             + broadcast range services
 ## idea: TODO: do not Masquerade/DNAT special ip's (spoof-able ips)
 #
+<<<<<<< HEAD
 #VER="1.7beta4" 
+=======
+#VER="1.7beta4"
+>>>>>>> master
 # beta3
 # working on the ! case in  _SRV areas
 # next, allow "all" for anywhere a proto ip:port is accepted
@@ -183,10 +197,17 @@ VER="1.9beta1"
 #  CyN='\033[0;36m'
 #  UnL='\033[33;04m'
   DeF='\033[0m'
+<<<<<<< HEAD
 ## end initializations 
 
 # Path to Script  - used for  `restart`
 SCRIPT=/usr/local/etc/DTfw/dtfw
+=======
+## end initializations
+
+# Path to Script  - used for  `restart`
+SCRIPT=/usr/bin/dtfw
+>>>>>>> master
 
 ## Specify where IP Tables is located
 # not necessary for:
@@ -206,6 +227,7 @@ FWSAVE=/etc/iptables/iptables.rules
 MODPROBE=/sbin/modprobe
 
 ## List Locations
+<<<<<<< HEAD
 WHITELIST=/usr/local/etc/DTfw/dtfw-lists/dtfw_whitelist.lst
 BLACKLIST=/usr/local/etc/DTfw/dtfw-lists/dtfw_blacklist.lst
 #OUT_WHITELIST=/usr/local/etc/DTfw/dtfw-lists/dtfw_whitelist_OUTS.lst   # most likely not implemented
@@ -219,6 +241,21 @@ DYNDNSWHITELIST=/usr/local/etc/DTfw/dtfw_dynamiclists/dtfw_dynamic_whitelist.lst
 # Server is behind a router or directly connected to the internet 
 #  deals directly with IPSpoofing and Broadcasts
 ### not fully implemented 
+=======
+WHITELIST=/etc/DTfw/dtfw-lists/dtfw_whitelist.lst
+BLACKLIST=/etc/DTfw/dtfw-lists/dtfw_blacklist.lst
+#OUT_WHITELIST=/usr/local/etc/DTfw/dtfw-lists/dtfw_whitelist_OUTS.lst   # most likely not implemented
+OUT_BLACKLIST=/etc/DTfw/dtfw-lists/dtfw_blacklist_OUTS.lst   # not implemented - optional
+
+# DTfw DynamicHosts script - single IP
+# working on Mulitple Dynamic IP list
+DYNHOSTSCRIPT=/usr/bin/dtfw_dynamichosts
+DYNDNSWHITELIST=/etc/DTfw/dtfw_dynamiclists/dtfw_dynamic_whitelist.lst
+
+# Server is behind a router or directly connected to the internet
+#  deals directly with IPSpoofing and Broadcasts
+### not fully implemented
+>>>>>>> master
 #IFACES="LAN"
 #IFACES+=("WAN" "")
 IFACES+=("WAN" "eth0") # drops
@@ -234,7 +271,11 @@ IFACES+=("LAN" "eth2")
 #IFACES+=("WAN" "eth10")
 #IFACES+=("WAN" "eth20")
 
+<<<<<<< HEAD
 # IFACES="WAN" 
+=======
+# IFACES="WAN"
+>>>>>>> master
 ## IFACES+=("LAN" "eth0")  ## not implemented
 ## IFACES+=("WAN" "eth1")  ## not implemented
 ## IFACES+=("LAN" "")  ## not implemented
@@ -831,10 +872,17 @@ function InsertLayerRule {
                 continue
             fi
 
+<<<<<<< HEAD
 # [ condition ] && (true || [ 1 == 1 ]) || false            
             if [ "$action" == "-j LOG" ]; then
                 # BS section for if action is LOG (the --log-prefix  above fails!)
                 case "$1" in   
+=======
+# [ condition ] && (true || [ 1 == 1 ]) || false
+            if [ "$action" == "-j LOG" ]; then
+                # BS section for if action is LOG (the --log-prefix  above fails!)
+                case "$1" in
+>>>>>>> master
                     101|102|103|104) # INPUT 1
                         $IPTABLES -t filter -I INPUT 1 ${Proto} ${srcIP} ${SrcP} ${DestIP} ${DestP} ${action} --log-prefix "${LogPrefix}${p1} " -m comment --comment "${desc}"
                         ;;
@@ -917,10 +965,17 @@ function noSpoof {
 
       iface=""  # interface
     d_iface=""
+<<<<<<< HEAD
     d_ifaceNLO="! -i lo"  # TODO: is it needed:  ! -i lo 
     s_ip=""  # source IP
       ip=""  # our interface calculated subnet
     d_ip=""  # our interface IP 
+=======
+    d_ifaceNLO="! -i lo"  # TODO: is it needed:  ! -i lo
+    s_ip=""  # source IP
+      ip=""  # our interface calculated subnet
+    d_ip=""  # our interface IP
+>>>>>>> master
 #    if [[ "$1" == "wan" ]]; then
 #        continue
 #    elif [[ "$1" == "iface" ]]; then
@@ -954,7 +1009,11 @@ function noSpoof {
         d_ip="-d ${ip}"
     elif [[ "$1" == "ip" && "${2}" == "LAN" ]]; then
         $IPTABLES -A INPUT -m comment --comment "LAN MODE for $3 in noSpoof - this does nothing"
+<<<<<<< HEAD
         return        
+=======
+        return
+>>>>>>> master
     elif [[ "$1" == "lan" ]]; then
         $IPTABLES -A INPUT -m comment --comment "LAN MODE in noSpoof - this does nothing"
         return
@@ -1072,7 +1131,11 @@ case "$1" in
     # Create Chain for Dymanic Hosts
     $IPTABLES -N dtfwdynamichosts
 
+<<<<<<< HEAD
 ####  TODO: make this work -  bw rates 
+=======
+####  TODO: make this work -  bw rates
+>>>>>>> master
     BW_Rates="off"
 
     #  BW_Rates section
@@ -1282,7 +1345,11 @@ case "$1" in
     InsertLayerRule "107"
     if [[ "$IFACES" == "LAN" ]]; then
         echo ' Allowing Localhost'
+<<<<<<< HEAD
     #Allow localhost.  # whats origin of this ? 
+=======
+    #Allow localhost.  # whats origin of this ?
+>>>>>>> master
         $IPTABLES -A INPUT -t filter -s 127.0.0.1 -j ACCEPT -m comment --comment "allow localhost LAYER RULE 7"
     fi
 
@@ -1327,7 +1394,11 @@ case "$1" in
     # Corrupt Packet drop
     $IPTABLES -A OUTPUT -m conntrack --ctstate INVALID -j DROP -m comment --comment "${OUT_BAD_PAC_DESC}"
 
+<<<<<<< HEAD
     InsertLayerRule "167" 
+=======
+    InsertLayerRule "167"
+>>>>>>> master
     # DROP/REJECT rules [TODO] - destination port blocking (source IP blocking) - iface?
     ### loop for blocking outbound
 
@@ -1352,6 +1423,7 @@ case "$1" in
     # Force ACCEPT Rules [TODO]
 
     # unclean data (attacks, corrupt, ect) - FORWARD chain
+<<<<<<< HEAD
     ### 
     InsertLayerRule "134"
     # Corrupt Packet drop 
@@ -1359,6 +1431,15 @@ case "$1" in
     InsertLayerRule "135"
     # Stealth Scans etc. DROPpen
     # Non Flags 
+=======
+    ###
+    InsertLayerRule "134"
+    # Corrupt Packet drop
+    $IPTABLES -A FORWARD -m conntrack --ctstate INVALID -j DROP   -m comment --comment "corrupt packets FORWARD"
+    InsertLayerRule "135"
+    # Stealth Scans etc. DROPpen
+    # Non Flags
+>>>>>>> master
     $IPTABLES -A FORWARD -p tcp --tcp-flags ALL NONE -j $DropTableName   -m comment --comment "stealth scans"
     # SYN and FIN
     $IPTABLES -A FORWARD -p tcp --tcp-flags SYN,FIN SYN,FIN -j $DropTableName   -m comment --comment "SYN and FIN" 
@@ -1436,8 +1517,13 @@ case "$1" in
     #
     ## FILTER INPUT chain
     # unclean data (attacks, corrupt, ect) - INPUT chain
+<<<<<<< HEAD
     ### 
     InsertLayerRule "109"    
+=======
+    ###
+    InsertLayerRule "109"
+>>>>>>> master
     invalid_frag_chain="INPUT"
     if [[ "$FancyInvalid_Frag" == "true" || "$FancyInvalid_Frag" == "TRUE" ]]; then
         invalid_frag_chain="InvalidFrag"
@@ -1445,7 +1531,11 @@ case "$1" in
         $IPTABLES -A INPUT -j $invalid_frag_chain     -m comment --comment "check for Invalid or Fragmented Packets"
     fi
 
+<<<<<<< HEAD
     # Corrupt Packet drop 
+=======
+    # Corrupt Packet drop
+>>>>>>> master
     $IPTABLES -A $invalid_frag_chain -m conntrack --ctstate INVALID -j $DropTableName     -m comment --comment "invalid packets INPUT"
     # Force Fragments packets check
     $IPTABLES -A $invalid_frag_chain -f -j $DropTableName     -m comment --comment "force fragment packet check"
@@ -1459,7 +1549,11 @@ case "$1" in
         $IPTABLES -A INPUT -p tcp -j $uncleanChainIN     -m comment --comment "check for invalid tcp packets"
     fi
     # Stealth Scans etc. DROPpen
+<<<<<<< HEAD
     # Non Flags 
+=======
+    # Non Flags
+>>>>>>> master
     $IPTABLES -A $uncleanChainIN -p tcp --tcp-flags ALL NONE -j $DropTableName     -m comment --comment "stealth scans"
     # SYN and FIN
     $IPTABLES -A $uncleanChainIN -p tcp --tcp-flags SYN,FIN SYN,FIN -j $DropTableName     -m comment --comment "SYN and FIN" 
@@ -1509,10 +1603,17 @@ case "$1" in
     if [[ $"${Block_Ping[0]}" == "false" || "${Block_Ping[0]}" == "no" ]]; then
       $IPTABLES  -A INPUT -p icmp --icmp-type echo-request -j ACCEPT   -m comment --comment "allow ping"
       echo " Ping (ipv4): allowed."
+<<<<<<< HEAD
     elif [[ "${Block_Ping[0]}" == "drop" ]]; then 
       $IPTABLES  -A INPUT -p icmp --icmp-type echo-request -j DROP     -m comment --comment "drop ping"
       echo " Ping (ipv4): dropped."
     elif [[ "${Block_Ping[0]}" == "reject" ]]; then 
+=======
+    elif [[ "${Block_Ping[0]}" == "drop" ]]; then
+      $IPTABLES  -A INPUT -p icmp --icmp-type echo-request -j DROP     -m comment --comment "drop ping"
+      echo " Ping (ipv4): dropped."
+    elif [[ "${Block_Ping[0]}" == "reject" ]]; then
+>>>>>>> master
       sendBack=( )
       case "${Block_Ping[1]}" in
           1|icmp-port-unreachable)
@@ -1584,7 +1685,11 @@ case "$1" in
 
 
     InsertLayerRule "115"
+<<<<<<< HEAD
     # Block Brute Force 
+=======
+    # Block Brute Force
+>>>>>>> master
     BF_chain="INPUT"
     if [[ "$FancyBruteForce" == "true" || "$FancyBruteForce" == "TRUE" ]]; then
         BF_chain="BruteForce"
@@ -1817,7 +1922,11 @@ case "$1" in
         $IPTABLES   -t filter -A ${SRV_chain} -m conntrack --ctstate NEW -p ${proto} ${sport} ${dport} \
             -j ACCEPT -m comment --comment "${PSD_SRV[$i]} ${proto}"
 
+<<<<<<< HEAD
 ## unset array (leaves empty item)        
+=======
+## unset array (leaves empty item)
+>>>>>>> master
         unset PSD_SRV[$i]
         unset PSD_SRV[$i+1]
         unset PSD_SRV[$i+2]
@@ -2097,8 +2206,13 @@ case "$1" in
    InsertLayerRule "161" # output  - LogAllPackets
 
 
+<<<<<<< HEAD
     # Log Bogus and Last Line segment  
     ### 
+=======
+    # Log Bogus and Last Line segment
+    ###
+>>>>>>> master
     ## INPUT_LOG_BOGUS
     if [[ "$INPUT_LOG_BOGUS" == "true" ]]; then
       echo " Logging bogus/leftover inbound traffic."
@@ -2135,7 +2249,11 @@ case "$1" in
       $IPTABLES -A OUTPUT -p udp -j REJECT --reject-with icmp-port-unreachable   -m comment --comment "send port unreachable udp"
     fi
     ###
+<<<<<<< HEAD
     # end Log Bogus and Last Line segment 
+=======
+    # end Log Bogus and Last Line segment
+>>>>>>> master
 
     # DTfw Dynamic Host
     if [ -f $DYNHOSTSCRIPT ];then
