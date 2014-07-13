@@ -215,7 +215,7 @@ OUT_BLACKLIST=/etc/DTfw/dtfw-lists/dtfw_blacklist_OUTS.lst   # not implemented -
 
 # DTfw DynamicHosts script - single IP
 # working on Mulitple Dynamic IP list
-DYNHOSTSCRIPT=/etc/DTfw/dtfw_dynamichosts.sh
+DYNHOSTSCRIPT=/usr/bin/dtfw_dynamichosts
 DYNDNSWHITELIST=/etc/DTfw/dtfw_dynamiclists/dtfw_dynamic_whitelist.lst
 
 # Server is behind a router or directly connected to the internet
