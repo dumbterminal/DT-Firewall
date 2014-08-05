@@ -48,7 +48,11 @@
 #       mangle - PreRouting 201-219  Input 221-239  FORWARD 241-259  OUTPUT 261-279  PostRouting 281-299
 #       nat    - PreRouting 301-329  POSTROUTING 331-359  OUTPUT 361-389
 #
-VER="1.9beta2"
+VER="2.0beta1"
+# Add a config file for easy edits
+# /etc/DTfw/dtfw.config
+#
+#VER="1.9beta2"
 # move out of the usr/local folder and into /etc/DTfw
 #VER="1.9beta1"
 # Multiple Dynamic DNS Support
@@ -218,6 +222,9 @@ OUT_BLACKLIST=/etc/DTfw/dtfw-lists/dtfw_blacklist_OUTS.lst   # not implemented -
 DYNHOSTSCRIPT=/usr/bin/dtfw_dynamichosts
 DYNDNSWHITELIST=/etc/DTfw/dtfw_dynamiclists/dtfw_dynamic_whitelist.lst
 
+# DTfw Config file path
+DTCONFIG=/etc/DTfw/dtfw.config
+
 # Server is behind a router or directly connected to the internet
 #  deals directly with IPSpoofing and Broadcasts
 ### not fully implemented
@@ -296,33 +303,6 @@ Allow_lan_inBCast="true";   # NOT IMPLEMENTED
 # end true/false
 
 
-# IP Subnets to block from spoofing
-# blocks listed addresses from INPUT on all but iface lo
- # remember WHITELIST contains ip/range of all allowed subnets
-Picky_Spoof_Rules="false"  ## TODO: allow user to comment out recommended spoof ranges, or add to the list
-SPOOF_IPS+=("0.0.0.0/8")
-SPOOF_IPS+=("10.0.0.0/8")
-SPOOF_IPS+=("127.0.0.0/8")
-SPOOF_IPS+=("169.254.0.0/16")
-#SPOOF_IPS+=("172.16.0.0/12")
-SPOOF_IPS+=("192.168.0.0/16")
-SPOOF_IPS+=("224.0.0.0/4")
-SPOOF_IPS+=("239.255.255.0/24")
-SPOOF_IPS+=("240.0.0.0/5")
-SPOOF_IPS+=("255.255.255.255")
-
-  ## http://www.newartisans.com/2007/09/neat-tricks-with-iptables.html
-  #   Scapy - check attacks with
-  ##   source and destination IPs specified
-
-
-
-# Block Brute Force Ports + Names
-#BruteForce+=("port:(s)" "description")
-BruteForce+=("21:22" "FTP:SSH")
-BruteForce+=("59090" "sabnzbd")
-BruteForce+=("9000" "irssiproxy")
-
 # Other flood protections [limit rate in FORWARD] - prevent DoS
 #   http://netfilter.org/documentation/HOWTO/packet-filtering-HOWTO-7.html
 # <rate>/ <s|second> | <m|minute> | <h|hour> | <d|day>
@@ -331,91 +311,13 @@ OTHER_FLOODS+=("furtive port scanner" "1/s")
 OTHER_FLOODS+=("ping of death" "1/s")
 
 
-
-
-
 ## Inbound Malformed/Bad Packet drop
 #
 DropTableName="MY_DROP"
 LOG_Droped="true"
 
-
-
-## sshguard
-UseSSHGuard="true"
-SSHG_TableName="sshguard"
-# Specify parameters for SSH guard, and any additional IPTABLES syntaxed parameters
-sshguard_params="-p tcp --dport 22"
-sshguard_moreps="! -s 192.168.1.1/24"
-
-
-# Allow inbound Samba/HTPC from specific ip/subnet
-#SAMBA+=("ip" "ip/cidr")
-SAMBA+=("192.168.1.1/24")
-
-
-
-### General Services (specific destination port)
-##  PD_SRV+=( "<DESC>" "<tcp|udp|both>" "<PORT|all>" )
-PD_SRV+=("HTTP" "tcp" "80")
-PD_SRV+=("HTTPS" "tcp" "443")
-PD_SRV+=("SSH" "tcp" "22")
-PD_SRV+=("SMPT" "tcp" "25")
-PD_SRV+=("SMPTS" "tcp" "465")
-PD_SRV+=("FTP" "tcp" "21")
-PD_SRV+=("SSH Two" "tcp" "52222")
-PD_SRV+=("FTP Two" "tcp" "50221")
-PD_SRV+=("FTP Passive" "tcp" "55536:56559")
-#PD_SRV+=("IRC" "both" "6667:6669")
-#PD_SRV+=("TELNET" "both" "41836:41838")
-PD_SRV+=("torrent" "tcp" "64840:64842")
-#PD_SRV+=("KDX" "tcp" "666")
-#PD_SRV=("test PD" "both" "0")
-#PD_SRV=("test PD" "ipv6-icmp" "any")
-PD_SRV=("irssiproxy" "any" "9000")
-PD_SRV=("synergy" "both" "24800")
-
-### Specific Source IP, Dest Port
-##  PID_SRV+=( "<DESC>" "<tcp|udp|both>" "<src ip>" "<dst port | all>"
-#PID_SRV+=("http configs" "tcp" "192.168.1.0/24" "8079")
-#PID_SRV+=("http configs" "tcp" "192.168.3.0/24" "8079")
-#PID_SRV+=("http configs" "tcp" "172.16.88.0/24" "8079")
-#PID_SRV+=("ssh gamebox" "tcp" "192.168.1.6/32" "22")
-#PID_SRV+=( "SSH vmNat" "tcp" "172.16.88.0/24" "22" )
-#PID_SRV+=("http configs mbp" "tcp" "172.16.88.0/24" "8079")
-#PID_SRV+=("synergy" "tcp" "192.168.1.71/24" "24800")
-#PID_SRV+=("synergy" "tcp" "192.168.1.72/24" "24800")
-#PID_SRV+=("ushare" "tcp" "192.168.1.71/24" "49200")
-#PID_SRV+=("ushare" "udp" "192.168.1.71/24" "1900")
-PID_SRV+=("nfs" "both" "192.168.1.1/24" "all")
-#PID_SRV+=( "ssh scwa" "tcp" "75.26.142.246/32" "22" )
-#PID_SRV+=( "ssh scwa" "tcp" "75.26.142.246/32" "443" )4183q
-#PID_SRV=("test PID" "ipv6-icmp" "any" "any")
-
-
-### Specific Port Services (source and destination)
-##  PSD_SRV+=( "<DESC>" "<tcp|udp|both>" "<Source PORT>" "<Destination PORT>")
-#PSD_SRV+=( "TELNET bot1" "tcp" "41845:41895" "41836" )
-#PSD_SRV+=( "TELNET bot2" "tcp" "41845:41895" "41837" )
-#PSD_SRV+=( "TELNET bot3" "tcp" "41845:41895" "41838" )
-#PSD_SRV+=( "TELNET bot4" "tcp" "31840:31848" "1846" )
-#PSD_SRV=( "test PSD" "ipv6-icmp" "all" "any" )
-#PSD_SRV=( "test PSD" "tcp" "10" "20" )
-
-
-### Specific Source IP:Port, Dest Port
-##  PISD_SRV+=( "<DESC>" "<tcp|udp|both>" "<src ip>" "<src port>" "<dest port>"
-#PISD_SRV+=( "TELNET bot5" "tcp" "127.0.0.1" "31840:31848" "1843" )
-#PISD_SRV+=( "TELNET bot6" "tcp" "127.0.0.1" "31840:31848" "1844" )
-#PISD_SRV+=( "TELNET bot7" "tcp" "127.0.0.1" "31840:31848" "1845" )
-#PISD_SRV+=( "TELNET bot8" "tcp" "127.0.0.1" "31840:31848" "1846" )
-#PISD_SRV+=( "Bnc" "tcp" "174.122.218.237" "52010:52021" "366" )
-#PISD_SRV+=( "test PISD" "both" "! 126.0.0.1" "! 60" "! 40" )
-#PISD_SRV+=( "test PISD" "tcp" "! 126.0.0.1" "! 60" " ! 40" )
-#PISD_SRV+=( "test PISD" "ipv6-icmp" "! 126.0.0.1" "any" "any" )
-#PISD_SRV+=( "test PISD" "any" "! 126.0.0.1" "any" "any" )
-
-
+# Source the config file
+[[ -f /etc/DTfw/dtfw.config ]] && . /etc/DTfw/dtfw.config
 
 # Specific:  Proto,  Source IP:Port,  Dest IP:Port,  Action
 # LayerRule=+( "<layer> "<DESC>" "<tcp|udp|any>" "<src ip|any>" "<src port|any>" "<dest ip|any>" "<dest port|any>" "<Action>"
